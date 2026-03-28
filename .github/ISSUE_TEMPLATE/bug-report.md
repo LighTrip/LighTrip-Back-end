@@ -1,7 +1,7 @@
 ---
 name: "🐛 버그 리포트"
 about: 발견된 버그를 해결하기 위한 이슈를 생성합니다.
-title: "fix: [버그 요약]"
+title: "FIX: [버그 요약]"
 labels: "bug"
 assignees: ''
 

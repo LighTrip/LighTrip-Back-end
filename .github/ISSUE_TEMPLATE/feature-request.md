@@ -1,7 +1,7 @@
 ---
 name: "✨ 기능 개발 이슈"
 about: 새로운 기능 개발을 위한 이슈를 생성합니다.
-title: "feat: [기능 요약]"
+title: "FEAT: [기능 요약]"
 labels: "feature"
 assignees: ''
 
