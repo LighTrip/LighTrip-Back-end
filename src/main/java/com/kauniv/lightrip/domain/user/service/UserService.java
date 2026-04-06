@@ -1,9 +1,9 @@
 package com.kauniv.lightrip.domain.user.service;
 
-import com.kauniv.lightrip.domain.user.entity.Auth;
+import com.kauniv.lightrip.global.auth.entity.Auth;
 import com.kauniv.lightrip.domain.user.entity.CurrentMode;
 import com.kauniv.lightrip.domain.user.entity.User;
-import com.kauniv.lightrip.domain.user.repository.AuthRepository;
+import com.kauniv.lightrip.global.auth.repository.AuthRepository;
 import com.kauniv.lightrip.domain.user.repository.UserRepository;
 import com.kauniv.lightrip.global.oauth.SocialType;
 import com.kauniv.lightrip.global.oauth.userinfo.OAuth2UserInfo;

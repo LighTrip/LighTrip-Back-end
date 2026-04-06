@@ -1,5 +1,6 @@
 package com.kauniv.lightrip.global.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kauniv.lightrip.global.jwt.JwtFilter;
 import com.kauniv.lightrip.global.jwt.JwtProvider;
 import com.kauniv.lightrip.global.oauth.CustomOAuth2UserService;
@@ -30,7 +31,7 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/oauth2/**", "/login/**").permitAll()
+                        .requestMatchers("/", "/oauth2/**", "/login/**", "/auth/refresh").permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
@@ -46,4 +47,10 @@ public class SecurityConfig {
 
         return http.build();
     }
+
+    @Bean
+    public ObjectMapper objectMapper() {
+        return new ObjectMapper();
+    }
+
 }

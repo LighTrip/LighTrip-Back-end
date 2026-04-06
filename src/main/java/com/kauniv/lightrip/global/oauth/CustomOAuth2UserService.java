@@ -1,6 +1,6 @@
 package com.kauniv.lightrip.global.oauth;
 
-import com.kauniv.lightrip.domain.user.entity.Auth;
+import com.kauniv.lightrip.global.auth.entity.Auth;
 import com.kauniv.lightrip.domain.user.service.UserService;
 import com.kauniv.lightrip.global.oauth.userinfo.KakaoOAuth2UserInfo;
 import com.kauniv.lightrip.global.oauth.userinfo.OAuth2UserInfo;

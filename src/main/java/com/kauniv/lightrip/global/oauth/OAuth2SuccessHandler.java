@@ -1,7 +1,9 @@
 package com.kauniv.lightrip.global.oauth;
 
-import com.kauniv.lightrip.domain.user.entity.Auth;
-import com.kauniv.lightrip.domain.user.repository.AuthRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kauniv.lightrip.global.auth.dto.LoginResponse;
+import com.kauniv.lightrip.global.auth.entity.Auth;
+import com.kauniv.lightrip.global.auth.repository.AuthRepository;
 import com.kauniv.lightrip.global.jwt.JwtProvider;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,6 +21,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     private final JwtProvider jwtProvider;
     private final AuthRepository authRepository;
+    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -40,9 +43,12 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         auth.updateRefreshToken(refreshToken);
 
         response.setContentType("application/json;charset=UTF-8");
-        response.getWriter().write(
-                "{\"accessToken\":\"" + accessToken + "\"," +
-                        "\"refreshToken\":\"" + refreshToken + "\"}"
-        );
+
+        LoginResponse loginResponse = LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .build();
+
+        response.getWriter().write(objectMapper.writeValueAsString(loginResponse));
     }
 }

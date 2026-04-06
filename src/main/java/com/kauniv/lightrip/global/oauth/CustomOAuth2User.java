@@ -1,6 +1,6 @@
 package com.kauniv.lightrip.global.oauth;
 
-import com.kauniv.lightrip.domain.user.entity.Auth;
+import com.kauniv.lightrip.global.auth.entity.Auth;
 import com.kauniv.lightrip.global.oauth.userinfo.OAuth2UserInfo;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
