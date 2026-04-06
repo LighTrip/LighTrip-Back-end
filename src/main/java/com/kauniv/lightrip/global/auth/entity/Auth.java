@@ -1,5 +1,6 @@
-package com.kauniv.lightrip.domain.user.entity;
+package com.kauniv.lightrip.global.auth.entity;
 
+import com.kauniv.lightrip.domain.user.entity.User;
 import com.kauniv.lightrip.global.oauth.SocialType;
 import jakarta.persistence.*;
 import lombok.*;
