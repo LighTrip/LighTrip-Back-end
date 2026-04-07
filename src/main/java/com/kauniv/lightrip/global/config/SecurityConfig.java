@@ -1,6 +1,5 @@
 package com.kauniv.lightrip.global.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kauniv.lightrip.global.jwt.JwtFilter;
 import com.kauniv.lightrip.global.jwt.JwtProvider;
 import com.kauniv.lightrip.global.oauth.CustomOAuth2UserService;
@@ -46,11 +45,6 @@ public class SecurityConfig {
                 );
 
         return http.build();
-    }
-
-    @Bean
-    public ObjectMapper objectMapper() {
-        return new ObjectMapper();
     }
 
 }
