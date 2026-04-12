@@ -1,4 +1,3 @@
-// PassportRepository.java
 package com.kauniv.lightrip.domain.passport.repository;
 
 import com.kauniv.lightrip.domain.passport.entity.Passport;

@@ -1,5 +1,6 @@
 package com.kauniv.lightrip.domain.passport.entity;
 
+import com.kauniv.lightrip.domain.team.entity.Team;
 import com.kauniv.lightrip.domain.user.entity.User;
 import com.kauniv.lightrip.global.enums.Category;
 import com.kauniv.lightrip.global.enums.District;
@@ -41,10 +42,9 @@ public class Passport {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // Team 엔티티 만들어지면 주석 해제
-    // @ManyToOne(fetch = FetchType.LAZY)
-    // @JoinColumn(name = "team_id")
-    // private Team team;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    private Team team;
 
     @Column(name = "image_url", columnDefinition = "TEXT", nullable = false)
     private String imageUrl;
@@ -65,7 +65,7 @@ public class Passport {
     private LocalDate visitedAt;
 
     @Column(name = "district", length = 50)
-    private String district; // 좌표 기반 자동 추출 (참고용)
+    private String district;
 
     @Column(name = "space_name", length = 50)
     private String spaceName;
@@ -92,7 +92,6 @@ public class Passport {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    // 수정 메서드
     public void update(String imageUrl, String content, String spaceName,
                        Category category, District districtCategory,
                        String musicTitle, String musicArtist) {
