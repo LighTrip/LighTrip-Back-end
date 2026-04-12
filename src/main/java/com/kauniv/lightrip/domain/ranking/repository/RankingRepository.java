@@ -1,4 +1,3 @@
-// RankingRepository.java
 package com.kauniv.lightrip.domain.ranking.repository;
 
 import com.kauniv.lightrip.domain.ranking.entity.Ranking;

@@ -1,4 +1,3 @@
-// ScrapRepository.java
 package com.kauniv.lightrip.domain.scrap.repository;
 
 import com.kauniv.lightrip.domain.scrap.entity.Scrap;

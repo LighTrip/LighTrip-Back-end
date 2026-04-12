@@ -34,7 +34,7 @@ public class Ranking {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "district", length = 50)
-    private District district; // NULL이면 전체 랭킹, 값 있으면 구별 랭킹
+    private District district;
 
     @Column(name = "rank", nullable = false)
     private Integer rank;
