@@ -30,7 +30,10 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/", "/oauth2/**", "/login/**", "/auth/refresh", "/actuator/health").permitAll()
+                        .requestMatchers(
+                                "/", "/oauth2/**", "/login/**", "/auth/refresh",
+                                "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**"
+                        ).permitAll()
                         .anyRequest().authenticated()
                 )
                 .oauth2Login(oauth2 -> oauth2
