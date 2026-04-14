@@ -32,7 +32,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/", "/oauth2/**", "/login/**", "/auth/refresh",
-                                "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**"
+                                "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**",
+                                "/actuator/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
