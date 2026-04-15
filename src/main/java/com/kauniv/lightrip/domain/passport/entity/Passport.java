@@ -4,6 +4,7 @@ import com.kauniv.lightrip.domain.team.entity.Team;
 import com.kauniv.lightrip.domain.user.entity.User;
 import com.kauniv.lightrip.global.enums.Category;
 import com.kauniv.lightrip.global.enums.District;
+import com.kauniv.lightrip.global.enums.Visibility;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -78,6 +79,10 @@ public class Passport {
     @Column(name = "district_category", nullable = false)
     private District districtCategory;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility", nullable = false, length = 20)
+    private Visibility visibility;
+
     @Column(name = "music_title", length = 100)
     private String musicTitle;
 
@@ -92,15 +97,36 @@ public class Passport {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public void update(String imageUrl, String content, String spaceName,
-                       Category category, District districtCategory,
-                       String musicTitle, String musicArtist) {
+
+    public void update(String imageUrl,
+                       String content,
+                       String spaceName,
+                       Category category,
+                       District districtCategory,
+                       Visibility visibility,
+                       String musicTitle,
+                       String musicArtist) {
         this.imageUrl = imageUrl;
         this.content = content;
         this.spaceName = spaceName;
         this.category = category;
         this.districtCategory = districtCategory;
+        this.visibility = visibility;
         this.musicTitle = musicTitle;
         this.musicArtist = musicArtist;
+    }
+
+    /**
+     * 해당 사용자가 이 여권의 작성자인지 확인
+     */
+    public boolean isOwnedBy(Long userId) {
+        return this.user.getId().equals(userId);
+    }
+
+    /**
+     * 팀 모드 여권 여부
+     */
+    public boolean isTeamPassport() {
+        return this.team != null;
     }
 }
