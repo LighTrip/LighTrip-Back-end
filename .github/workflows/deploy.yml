@@ -1,4 +1,4 @@
-name: Deploy to ECS
+name: Deploy to EC2
 
 on:
   push:
@@ -7,9 +7,6 @@ on:
 env:
   AWS_REGION: ap-northeast-2
   ECR_REPOSITORY: lightrip-server
-  ECS_CLUSTER: lightrip-cluster
-  ECS_SERVICE: lightrip-service
-  TASK_DEFINITION: lightrip-task
 
 jobs:
   deploy:
@@ -40,25 +37,27 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
 
-      - name: Download current task definition
-        run: |
-          aws ecs describe-task-definition \
-            --task-definition $TASK_DEFINITION \
-            --query taskDefinition \
-            > task-def.json
-
-      - name: Update task definition with new image
-        id: task-def
-        uses: aws-actions/amazon-ecs-render-task-definition@v1
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          task-definition: task-def.json
-          container-name: lightrip-server
-          image: ${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}:${{ github.sha }}
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: ECR_REGISTRY
+          script: |
+            aws ecr get-login-password --region ap-northeast-2 | \
+              docker login --username AWS --password-stdin $ECR_REGISTRY
 
-      - name: Deploy to ECS
-        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
-        with:
-          task-definition: ${{ steps.task-def.outputs.task-definition }}
-          service: ${{ env.ECS_SERVICE }}
-          cluster: ${{ env.ECS_CLUSTER }}
-          wait-for-service-stability: true
+            docker pull $ECR_REGISTRY/lightrip-server:latest
+
+            docker stop lightrip-server || true
+            docker rm lightrip-server || true
+
+            docker run -d \
+              --name lightrip-server \
+              --restart always \
+              -p 8080:8080 \
+              --env-file /home/ec2-user/.env \
+              $ECR_REGISTRY/lightrip-server:latest
+        env:
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
