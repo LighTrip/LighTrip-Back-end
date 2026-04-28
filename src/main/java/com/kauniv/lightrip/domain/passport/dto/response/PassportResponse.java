@@ -30,6 +30,8 @@ public record PassportResponse(
         Visibility visibility,
         String musicTitle,
         String musicArtist,
+        Long likeCount,
+        Long scrapCount,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -55,6 +57,8 @@ public record PassportResponse(
                 p.getVisibility(),
                 p.getMusicTitle(),
                 p.getMusicArtist(),
+                p.getLikeCount(),       // 🆕
+                p.getScrapCount(),      // 🆕
                 p.getCreatedAt(),
                 p.getUpdatedAt()
         );

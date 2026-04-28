@@ -2,6 +2,7 @@ package com.kauniv.lightrip.domain.scrap.service;
 
 import com.kauniv.lightrip.domain.passport.entity.Passport;
 import com.kauniv.lightrip.domain.passport.service.PassportService;
+import com.kauniv.lightrip.domain.scrap.dto.response.ScrapListResponse;
 import com.kauniv.lightrip.domain.scrap.dto.response.ScrapResponse;
 import com.kauniv.lightrip.domain.scrap.entity.Scrap;
 import com.kauniv.lightrip.domain.scrap.repository.ScrapRepository;
@@ -9,9 +10,12 @@ import com.kauniv.lightrip.domain.user.entity.User;
 import com.kauniv.lightrip.domain.user.repository.UserRepository;
 import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
+import com.kauniv.lightrip.global.common.response.CursorResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -28,10 +32,8 @@ public class ScrapService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // 여권 존재 + visibility 접근 권한 검증
         Passport passport = passportService.getPassportWithReadCheck(userId, passportId);
 
-        // 중복 스크랩 체크
         if (scrapRepository.existsByUser_IdAndPassport_Id(userId, passportId)) {
             throw new BusinessException(ErrorCode.SCRAP_DUPLICATE);
         }
@@ -40,6 +42,8 @@ public class ScrapService {
                 .user(user)
                 .passport(passport)
                 .build();
+
+        passport.increaseScrapCount();
 
         return ScrapResponse.from(scrapRepository.save(scrap));
     }
@@ -50,6 +54,29 @@ public class ScrapService {
         Scrap scrap = scrapRepository.findByUser_IdAndPassport_Id(userId, passportId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.SCRAP_NOT_FOUND));
 
+        scrap.getPassport().decreaseScrapCount();
+
         scrapRepository.delete(scrap);
+    }
+
+    // ========== 내 스크랩 목록 조회 (커서 기반) ==========
+    public CursorResponse<ScrapListResponse> getMyScraps(Long userId, Long cursor, int size) {
+        List<Scrap> scraps = (cursor == null)
+                ? scrapRepository.findByUserIdFirst(userId, size + 1)
+                : scrapRepository.findByUserIdAfterCursor(userId, cursor, size + 1);
+
+        boolean hasNext = scraps.size() > size;
+
+        if (hasNext) {
+            scraps = scraps.subList(0, size);
+        }
+
+        List<ScrapListResponse> content = scraps.stream()
+                .map(ScrapListResponse::from)
+                .toList();
+
+        Long nextCursor = hasNext ? scraps.get(scraps.size() - 1).getId() : null;
+
+        return CursorResponse.of(content, hasNext, nextCursor);
     }
 }
