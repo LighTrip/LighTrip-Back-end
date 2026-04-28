@@ -16,6 +16,7 @@ import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.kauniv.lightrip.domain.friend.repository.FriendRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +28,7 @@ public class PassportService {
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final FriendRepository friendRepository;
 
     // ========== 등록 ==========
     @Transactional
@@ -117,6 +119,46 @@ public class PassportService {
             if (!passport.isOwnedBy(userId)) {
                 throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
             }
+        }
+    }
+
+    // ========== 상세 조회 ==========
+    public PassportResponse getPassport(Long userId, Long passportId) {
+        Passport passport = passportRepository.findById(passportId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
+
+        validateReadPermission(passport, userId);
+
+        return PassportResponse.from(passport);
+    }
+
+    // ========== 조회 권한 검증 (Visibility) ==========
+    private void validateReadPermission(Passport passport, Long userId) {
+        if (passport.isOwnedBy(userId)) {
+            return;
+        }
+
+        if (passport.isTeamPassport()) {
+            boolean isMember = teamMemberRepository.existsByTeam_IdAndUser_Id(
+                    passport.getTeam().getId(), userId
+            );
+            if (isMember) {
+                return;
+            }
+        }
+
+        switch (passport.getVisibility()) {
+            case PUBLIC -> {
+                return;
+            }
+            case FRIENDS_ONLY -> {
+                Long ownerId = passport.getUser().getId();
+                if (friendRepository.isFriend(userId, ownerId)) {
+                    return;
+                }
+                throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
+            }
+            case PRIVATE -> throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
         }
     }
 }
