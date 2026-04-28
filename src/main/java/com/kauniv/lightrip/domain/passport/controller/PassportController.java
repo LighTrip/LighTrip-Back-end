@@ -52,4 +52,14 @@ public class PassportController {
         passportService.delete(userId, passportId);
         return ApiResponse.success("여권이 삭제되었습니다.", null);
     }
+
+    @Operation(summary = "여권 상세 조회",
+            description = "여권 상세 정보를 조회합니다. 공개 범위(visibility)에 따라 접근이 제한됩니다.")
+    @GetMapping("/{passportId}")
+    public ApiResponse<PassportResponse> getPassport(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "여권 ID") @PathVariable Long passportId
+    ) {
+        return ApiResponse.success(passportService.getPassport(userId, passportId));
+    }
 }
