@@ -1,4 +1,3 @@
-// domain/passport/controller/PassportController.java
 package com.kauniv.lightrip.domain.passport.controller;
 
 import com.kauniv.lightrip.domain.passport.dto.request.PassportCreateRequest;
@@ -14,7 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Passport", description = "여권 등록/수정/삭제 API")
+@Tag(name = "Passport", description = "여권 API")
 @RestController
 @RequestMapping("/api/v1/passports")
 @RequiredArgsConstructor
@@ -22,7 +21,8 @@ public class PassportController {
 
     private final PassportService passportService;
 
-    @Operation(summary = "여권 등록", description = "방문 기록을 여권으로 등록합니다. 같은 사용자 + 같은 좌표 + 같은 날짜는 중복 등록 불가.")
+    @Operation(summary = "여권 등록",
+            description = "방문 기록을 여권으로 등록합니다. 이미지 1~5장 필수.")
     @PostMapping
     public ApiResponse<PassportResponse> create(
             @AuthenticationPrincipal Long userId,
@@ -32,7 +32,7 @@ public class PassportController {
     }
 
     @Operation(summary = "여권 수정",
-            description = "여권 정보를 수정합니다. 위치/날짜는 수정 불가. 개인 여권은 본인만, 팀 여권은 팀원 누구나 수정 가능.")
+            description = "여권 정보를 수정합니다. 위치/날짜 수정 불가. 개인=본인만, 팀=팀원 누구나.")
     @PatchMapping("/{passportId}")
     public ApiResponse<PassportResponse> update(
             @AuthenticationPrincipal Long userId,
@@ -43,7 +43,7 @@ public class PassportController {
     }
 
     @Operation(summary = "여권 삭제",
-            description = "여권을 삭제합니다. 작성자만 삭제 가능하며, 연관된 스크랩도 함께 삭제됩니다.")
+            description = "여권을 삭제합니다. 작성자만 삭제 가능하며, 연관 스크랩도 함께 삭제됩니다.")
     @DeleteMapping("/{passportId}")
     public ApiResponse<Void> delete(
             @AuthenticationPrincipal Long userId,
