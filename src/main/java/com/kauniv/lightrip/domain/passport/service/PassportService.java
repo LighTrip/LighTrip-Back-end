@@ -161,4 +161,11 @@ public class PassportService {
             case PRIVATE -> throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
         }
     }
+    public Passport getPassportWithReadCheck(Long userId, Long passportId) {
+        Passport passport = passportRepository.findById(passportId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
+        validateReadPermission(passport, userId);
+        return passport;
+    }
 }
+

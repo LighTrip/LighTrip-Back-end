@@ -6,10 +6,18 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.Optional;
+
 public interface ScrapRepository extends JpaRepository<Scrap, Long> {
 
     // 여권 삭제 시 연관 스크랩 일괄 삭제 (성능 위해 bulk delete)
     @Modifying
     @Query("DELETE FROM Scrap s WHERE s.passport.id = :passportId")
     void deleteAllByPassportId(Long passportId);
+
+    // 중복 스크랩 체크
+    boolean existsByUser_IdAndPassport_Id(Long userId, Long passportId);
+
+    // 스크랩 취소용 조회
+    Optional<Scrap> findByUser_IdAndPassport_Id(Long userId, Long passportId);
 }

@@ -93,6 +93,14 @@ public class Passport {
     @Column(name = "music_artist", length = 100)
     private String musicArtist;
 
+    @Column(name = "like_count", nullable = false)
+    @Builder.Default
+    private Long likeCount = 0L;
+
+    @Column(name = "scrap_count", nullable = false)
+    @Builder.Default
+    private Long scrapCount = 0L;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -143,5 +151,25 @@ public class Passport {
      */
     public boolean isTeamPassport() {
         return this.team != null;
+    }
+
+    // ============================================================
+    // 좋아요 / 스크랩 카운트
+    // ============================================================
+
+    public void increaseLikeCount() {
+        this.likeCount++;
+    }
+
+    public void decreaseLikeCount() {
+        if (this.likeCount > 0) this.likeCount--;
+    }
+
+    public void increaseScrapCount() {
+        this.scrapCount++;
+    }
+
+    public void decreaseScrapCount() {
+        if (this.scrapCount > 0) this.scrapCount--;
     }
 }
