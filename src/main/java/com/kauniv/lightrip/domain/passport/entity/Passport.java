@@ -17,6 +17,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(
@@ -47,8 +49,10 @@ public class Passport {
     @JoinColumn(name = "team_id")
     private Team team;
 
-    @Column(name = "image_url", columnDefinition = "TEXT", nullable = false)
-    private String imageUrl;
+    @OneToMany(mappedBy = "passport", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("imageOrder ASC")
+    @Builder.Default
+    private List<PassportImage> images = new ArrayList<>();
 
     @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
@@ -98,15 +102,13 @@ public class Passport {
     private LocalDateTime updatedAt;
 
 
-    public void update(String imageUrl,
-                       String content,
+    public void update(String content,
                        String spaceName,
                        Category category,
                        District districtCategory,
                        Visibility visibility,
                        String musicTitle,
                        String musicArtist) {
-        this.imageUrl = imageUrl;
         this.content = content;
         this.spaceName = spaceName;
         this.category = category;
@@ -114,6 +116,19 @@ public class Passport {
         this.visibility = visibility;
         this.musicTitle = musicTitle;
         this.musicArtist = musicArtist;
+    }
+
+    public void replaceImages(List<String> imageUrls) {
+        this.images.clear();
+        for (int i = 0; i < imageUrls.size(); i++) {
+            this.images.add(
+                    PassportImage.builder()
+                            .passport(this)
+                            .imageUrl(imageUrls.get(i))
+                            .imageOrder(i + 1)
+                            .build()
+            );
+        }
     }
 
     /**
