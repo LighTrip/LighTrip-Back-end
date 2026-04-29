@@ -39,7 +39,11 @@ public enum ErrorCode {
     TEAM_INVALID_INVITE_CODE(HttpStatus.BAD_REQUEST, "T003", "유효하지 않은 초대 코드입니다."),
 
     // ===== Map =====
-    REVERSE_GEOCODE_FAILED(HttpStatus.BAD_GATEWAY, "M001", "역지오코딩에 실패했습니다.");
+    REVERSE_GEOCODE_FAILED(HttpStatus.BAD_GATEWAY, "M001", "역지오코딩에 실패했습니다."),
+
+    // ===== Like =====
+    LIKE_NOT_FOUND(HttpStatus.NOT_FOUND, "L001", "좋아요 기록이 존재하지 않습니다."),
+    LIKE_DUPLICATE(HttpStatus.CONFLICT, "L002", "이미 좋아요한 여권입니다.");
 
     private final HttpStatus status;
     private final String code;

@@ -1,4 +1,3 @@
-// domain/passport/service/PassportService.java
 package com.kauniv.lightrip.domain.passport.service;
 
 import com.kauniv.lightrip.domain.passport.dto.request.PassportCreateRequest;
@@ -17,6 +16,7 @@ import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.kauniv.lightrip.domain.friend.repository.FriendRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +28,7 @@ public class PassportService {
     private final UserRepository userRepository;
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final FriendRepository friendRepository;
 
     // ========== 등록 ==========
     @Transactional
@@ -35,18 +36,15 @@ public class PassportService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // 중복 체크 (같은 사용자 + 같은 좌표 + 같은 날짜)
         if (passportRepository.existsByUser_IdAndLatitudeAndLongitudeAndVisitedAt(
                 userId, req.latitude(), req.longitude(), req.visitedAt())) {
             throw new BusinessException(ErrorCode.PASSPORT_DUPLICATE);
         }
 
-        // 팀 모드 검증: teamId가 있으면 해당 팀의 멤버여야 함
         Team team = null;
         if (req.teamId() != null) {
             team = teamRepository.findById(req.teamId())
                     .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND));
-
             if (!teamMemberRepository.existsByTeam_IdAndUser_Id(team.getId(), userId)) {
                 throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
             }
@@ -55,7 +53,6 @@ public class PassportService {
         Passport passport = Passport.builder()
                 .user(user)
                 .team(team)
-                .imageUrl(req.imageUrl())
                 .content(req.content())
                 .latitude(req.latitude())
                 .longitude(req.longitude())
@@ -70,7 +67,10 @@ public class PassportService {
                 .musicArtist(req.musicArtist())
                 .build();
 
-        return PassportResponse.from(passportRepository.save(passport));
+        passportRepository.save(passport);
+        passport.replaceImages(req.imageUrls());
+
+        return PassportResponse.from(passport);
     }
 
     // ========== 수정 ==========
@@ -79,14 +79,15 @@ public class PassportService {
         Passport passport = passportRepository.findById(passportId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
 
-        // 권한: 개인 여권 → 본인만 / 팀 여권 → 팀원 누구나
         validateUpdatePermission(passport, userId);
 
         passport.update(
-                req.imageUrl(), req.content(), req.spaceName(),
+                req.content(), req.spaceName(),
                 req.category(), req.districtCategory(), req.visibility(),
                 req.musicTitle(), req.musicArtist()
         );
+
+        passport.replaceImages(req.imageUrls());
 
         return PassportResponse.from(passport);
     }
@@ -97,20 +98,17 @@ public class PassportService {
         Passport passport = passportRepository.findById(passportId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
 
-        // 권한: 개인/팀 여권 모두 → 작성자(본인)만 삭제 가능
         if (!passport.isOwnedBy(userId)) {
             throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
         }
 
-        // 연관 스크랩 먼저 삭제 후 여권 삭제
         scrapRepository.deleteAllByPassportId(passportId);
         passportRepository.delete(passport);
     }
 
-    // ========== 권한 검증 헬퍼 ==========
+    // ========== 수정 권한 검증 ==========
     private void validateUpdatePermission(Passport passport, Long userId) {
         if (passport.isTeamPassport()) {
-            // 팀 여권: 팀원이면 누구나 수정 가능
             boolean isMember = teamMemberRepository.existsByTeam_IdAndUser_Id(
                     passport.getTeam().getId(), userId
             );
@@ -118,10 +116,56 @@ public class PassportService {
                 throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
             }
         } else {
-            // 개인 여권: 본인만
             if (!passport.isOwnedBy(userId)) {
                 throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
             }
         }
     }
+
+    // ========== 상세 조회 ==========
+    public PassportResponse getPassport(Long userId, Long passportId) {
+        Passport passport = passportRepository.findById(passportId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
+
+        validateReadPermission(passport, userId);
+
+        return PassportResponse.from(passport);
+    }
+
+    // ========== 조회 권한 검증 (Visibility) ==========
+    private void validateReadPermission(Passport passport, Long userId) {
+        if (passport.isOwnedBy(userId)) {
+            return;
+        }
+
+        if (passport.isTeamPassport()) {
+            boolean isMember = teamMemberRepository.existsByTeam_IdAndUser_Id(
+                    passport.getTeam().getId(), userId
+            );
+            if (isMember) {
+                return;
+            }
+        }
+
+        switch (passport.getVisibility()) {
+            case PUBLIC -> {
+                return;
+            }
+            case FRIENDS_ONLY -> {
+                Long ownerId = passport.getUser().getId();
+                if (friendRepository.isFriend(userId, ownerId)) {
+                    return;
+                }
+                throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
+            }
+            case PRIVATE -> throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
+        }
+    }
+    public Passport getPassportWithReadCheck(Long userId, Long passportId) {
+        Passport passport = passportRepository.findById(passportId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
+        validateReadPermission(passport, userId);
+        return passport;
+    }
 }
+
