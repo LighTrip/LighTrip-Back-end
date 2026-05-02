@@ -1,7 +1,5 @@
 package com.kauniv.lightrip.global.oauth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.kauniv.lightrip.global.auth.dto.LoginResponse;
 import com.kauniv.lightrip.global.auth.entity.Auth;
 import com.kauniv.lightrip.global.auth.repository.AuthRepository;
 import com.kauniv.lightrip.global.jwt.JwtProvider;
@@ -21,7 +19,6 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
     private final JwtProvider jwtProvider;
     private final AuthRepository authRepository;
-    private final ObjectMapper objectMapper;
 
     @Override
     @Transactional
@@ -42,13 +39,13 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .orElseThrow(() -> new RuntimeException("Auth를 찾을 수 없습니다."));
         auth.updateRefreshToken(refreshToken);
 
-        response.setContentType("application/json;charset=UTF-8");
+        boolean isNewUser = oAuth2User.isNewUser();
 
-        LoginResponse loginResponse = LoginResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .build();
+        String deepLink = String.format(
+                "lightrip://auth/callback?accessToken=%s&refreshToken=%s&isNewUser=%s",
+                accessToken, refreshToken, isNewUser
+        );
 
-        response.getWriter().write(objectMapper.writeValueAsString(loginResponse));
+        getRedirectStrategy().sendRedirect(request, response, deepLink);
     }
 }
