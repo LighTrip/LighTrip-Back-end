@@ -19,6 +19,10 @@ public class UserService {
     private final UserRepository userRepository;
     private final AuthRepository authRepository;
 
+    public boolean existsBySocialInfo(String socialId, SocialType socialType) {
+        return authRepository.findBySocialIdAndSocialType(socialId, socialType).isPresent();
+    }
+
     public Auth findOrCreateUser(OAuth2UserInfo oAuth2UserInfo, SocialType socialType) {
         return authRepository
                 .findBySocialIdAndSocialType(oAuth2UserInfo.getProviderId(), socialType)
