@@ -17,6 +17,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(
@@ -47,8 +49,10 @@ public class Passport {
     @JoinColumn(name = "team_id")
     private Team team;
 
-    @Column(name = "image_url", columnDefinition = "TEXT", nullable = false)
-    private String imageUrl;
+    @OneToMany(mappedBy = "passport", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("imageOrder ASC")
+    @Builder.Default
+    private List<PassportImage> images = new ArrayList<>();
 
     @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
@@ -89,6 +93,14 @@ public class Passport {
     @Column(name = "music_artist", length = 100)
     private String musicArtist;
 
+    @Column(name = "like_count", nullable = false)
+    @Builder.Default
+    private Long likeCount = 0L;
+
+    @Column(name = "scrap_count", nullable = false)
+    @Builder.Default
+    private Long scrapCount = 0L;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -98,15 +110,13 @@ public class Passport {
     private LocalDateTime updatedAt;
 
 
-    public void update(String imageUrl,
-                       String content,
+    public void update(String content,
                        String spaceName,
                        Category category,
                        District districtCategory,
                        Visibility visibility,
                        String musicTitle,
                        String musicArtist) {
-        this.imageUrl = imageUrl;
         this.content = content;
         this.spaceName = spaceName;
         this.category = category;
@@ -114,6 +124,19 @@ public class Passport {
         this.visibility = visibility;
         this.musicTitle = musicTitle;
         this.musicArtist = musicArtist;
+    }
+
+    public void replaceImages(List<String> imageUrls) {
+        this.images.clear();
+        for (int i = 0; i < imageUrls.size(); i++) {
+            this.images.add(
+                    PassportImage.builder()
+                            .passport(this)
+                            .imageUrl(imageUrls.get(i))
+                            .imageOrder(i + 1)
+                            .build()
+            );
+        }
     }
 
     /**
@@ -128,5 +151,25 @@ public class Passport {
      */
     public boolean isTeamPassport() {
         return this.team != null;
+    }
+
+    // ============================================================
+    // 좋아요 / 스크랩 카운트
+    // ============================================================
+
+    public void increaseLikeCount() {
+        this.likeCount++;
+    }
+
+    public void decreaseLikeCount() {
+        if (this.likeCount > 0) this.likeCount--;
+    }
+
+    public void increaseScrapCount() {
+        this.scrapCount++;
+    }
+
+    public void decreaseScrapCount() {
+        if (this.scrapCount > 0) this.scrapCount--;
     }
 }
