@@ -15,11 +15,13 @@ public class CustomOAuth2User implements OAuth2User {
     private final Auth auth;
     private final OAuth2UserInfo oAuth2UserInfo;
     private final Map<String, Object> attributes;
+    private final boolean isNewUser;
 
-    public CustomOAuth2User(Auth auth, OAuth2UserInfo oAuth2UserInfo, Map<String, Object> attributes) {
+    public CustomOAuth2User(Auth auth, OAuth2UserInfo oAuth2UserInfo, Map<String, Object> attributes, boolean isNewUser) {
         this.auth = auth;
         this.oAuth2UserInfo = oAuth2UserInfo;
         this.attributes = attributes;
+        this.isNewUser = isNewUser;
     }
 
     @Override
@@ -51,5 +53,9 @@ public class CustomOAuth2User implements OAuth2User {
 
     public SocialType getSocialType() {
         return auth.getSocialType();
+    }
+
+    public boolean isNewUser() {
+        return isNewUser;
     }
 }
