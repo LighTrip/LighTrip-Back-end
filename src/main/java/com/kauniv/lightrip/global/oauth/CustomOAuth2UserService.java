@@ -19,15 +19,12 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
-        // OAuth2 제공자로부터 사용자 정보 가져오기
         OAuth2User oAuth2User = super.loadUser(userRequest);
 
-        // 제공자 이름 가져오기 (kakao)
         String registrationId = userRequest.getClientRegistration().getRegistrationId();
 
         OAuth2UserInfo oAuth2UserInfo;
 
-        // 카카오 사용자 정보 파싱 - 추후 다른 제공자 추가 시 분기 예정
         if (registrationId.equals("kakao")) {
             oAuth2UserInfo = new KakaoOAuth2UserInfo(oAuth2User.getAttributes());
         } else {
@@ -36,9 +33,10 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         SocialType socialType = SocialType.valueOf(registrationId.toUpperCase());
 
+        boolean isNewUser = !userService.existsBySocialInfo(oAuth2UserInfo.getProviderId(), socialType);
+
         Auth auth = userService.findOrCreateUser(oAuth2UserInfo, socialType);
 
-        // CustomOAuth2User 반환
-        return new CustomOAuth2User(auth, oAuth2UserInfo, oAuth2User.getAttributes());
+        return new CustomOAuth2User(auth, oAuth2UserInfo, oAuth2User.getAttributes(), isNewUser);
     }
 }
