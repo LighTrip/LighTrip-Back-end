@@ -12,6 +12,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
+import java.util.List;
+
 
 @Tag(name = "Passport", description = "여권 API")
 @RestController
@@ -62,4 +65,14 @@ public class PassportController {
     ) {
         return ApiResponse.success(passportService.getPassport(userId, passportId));
     }
+
+    @Operation(summary = "내 기록 지역 조회",
+            description = "내가 여권을 등록한 지역 목록을 조회합니다. 지역별 여권 수와 대표 이미지를 포함합니다.")
+    @GetMapping("/districts/me")
+    public ApiResponse<List<DistrictResponse>> getMyDistricts(
+            @AuthenticationPrincipal Long userId
+    ) {
+        return ApiResponse.success(passportService.getMyDistricts(userId));
+    }
+
 }

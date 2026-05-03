@@ -21,6 +21,11 @@ import com.kauniv.lightrip.global.enums.District;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
 
 @Service
 @RequiredArgsConstructor
@@ -218,4 +223,28 @@ public class PassportService {
             case PRIVATE -> throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
         }
     }
+
+    // ========== 내 기록 지역 조회 ==========
+    public List<DistrictResponse> getMyDistricts(Long userId) {
+        // 1. 지역별 여권 수 조회
+        List<Object[]> counts = passportRepository.countByUserIdGroupByDistrict(userId);
+
+        // 2. 사용자의 DistrictCover 전체 조회 → Map으로 변환
+        Map<District, String> coverMap = districtCoverRepository.findAllByUser_Id(userId).stream()
+                .collect(Collectors.toMap(
+                        DistrictCover::getDistrictCategory,
+                        cover -> cover.getPassportImage().getImageUrl()
+                ));
+
+        // 3. 합치기
+        return counts.stream()
+                .map(row -> {
+                    District district = (District) row[0];
+                    Long count = (Long) row[1];
+                    String thumbnailUrl = coverMap.get(district);
+                    return DistrictResponse.of(district, count, thumbnailUrl);
+                })
+                .toList();
+    }
+
 }
