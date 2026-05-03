@@ -12,6 +12,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+
+@Tag(name = "친구 관리 API", description = "친구 요청, 수락/거절, 삭제 기능을 제공합니다.")
 @RestController
 @RequestMapping("/api/v1/friends")
 @RequiredArgsConstructor
@@ -19,6 +23,7 @@ public class FriendController {
 
     private final FriendService friendService;
 
+    @Operation(summary = "친구 요청 보내기", description = "친구 코드로 상대방에게 친구 요청을 보냅니다.")
     @PostMapping("/request")
     public ResponseEntity<FriendResponseDto> sendRequest(
             @AuthenticationPrincipal CustomOAuth2User user,
@@ -28,6 +33,7 @@ public class FriendController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Operation(summary = "친구 요청 수락/거절", description = "받은 친구 요청을 수락(ACCEPT) 또는 거절(REJECT)합니다.")
     @PatchMapping("/{friendId}")
     public ResponseEntity<?> handleRequest(
             @AuthenticationPrincipal CustomOAuth2User user,
@@ -42,6 +48,7 @@ public class FriendController {
         return ResponseEntity.ok(response);
     }
 
+    @Operation(summary = "친구 삭제", description = "친구 관계를 삭제합니다. 양쪽 당사자 모두 삭제 가능합니다.")
     @DeleteMapping("/{friendId}")
     public ResponseEntity<Void> deleteFriend(
             @AuthenticationPrincipal CustomOAuth2User user,
