@@ -5,6 +5,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
+
 public interface FriendRepository extends JpaRepository<Friend, Long> {
 
     @Query("""
@@ -21,4 +23,18 @@ public interface FriendRepository extends JpaRepository<Friend, Long> {
                OR (f.requester.id = :userB AND f.receiver.id = :userA)
             """)
     boolean existsFriendship(@Param("userA") Long userA, @Param("userB") Long userB);
+
+    @Query("""
+            SELECT f FROM Friend f
+            WHERE f.status = 'ACCEPTED'
+              AND (f.requester.id = :userId OR f.receiver.id = :userId)
+            """)
+    List<Friend> findAllFriends(@Param("userId") Long userId);
+
+    @Query("""
+            SELECT f FROM Friend f
+            WHERE f.status = 'PENDING'
+              AND f.receiver.id = :userId
+            """)
+    List<Friend> findPendingRequests(@Param("userId") Long userId);
 }
