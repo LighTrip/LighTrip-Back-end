@@ -6,6 +6,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Entity
 @Table(name = "users")
@@ -29,6 +30,9 @@ public class User {
     @Column(name = "profile_img", columnDefinition = "TEXT")
     private String profileImg;
 
+    @Column(name = "friend_code", nullable = false, unique = true, length = 8)
+    private String friendCode;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "current_mode")
     private CurrentMode currentMode;
@@ -40,4 +44,11 @@ public class User {
     @UpdateTimestamp
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
+
+    @PrePersist
+    private void generateFriendCode() {
+        if (this.friendCode == null) {
+            this.friendCode = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        }
+    }
 }
