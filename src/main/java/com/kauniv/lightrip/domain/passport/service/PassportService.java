@@ -19,8 +19,18 @@ import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import com.kauniv.lightrip.global.enums.District;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import com.kauniv.lightrip.domain.passport.dto.response.PassportListResponse;
+import com.kauniv.lightrip.global.common.response.CursorResponse;
+import com.kauniv.lightrip.global.enums.Category;
+import com.kauniv.lightrip.domain.passport.dto.response.PassportStatsResponse;
+import com.kauniv.lightrip.domain.like.repository.LikeRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -34,6 +44,7 @@ public class PassportService {
     private final TeamMemberRepository teamMemberRepository;
     private final FriendRepository friendRepository;
     private final DistrictCoverRepository districtCoverRepository;
+    private final LikeRepository likeRepository;
 
     // ========== 등록 ==========
     @Transactional
@@ -218,4 +229,62 @@ public class PassportService {
             case PRIVATE -> throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
         }
     }
+
+    // ========== 내 기록 지역 조회 ==========
+    public List<DistrictResponse> getMyDistricts(Long userId) {
+        // 1. 지역별 여권 수 조회
+        List<Object[]> counts = passportRepository.countByUserIdGroupByDistrict(userId);
+
+        // 2. 사용자의 DistrictCover 전체 조회 → Map으로 변환
+        Map<District, String> coverMap = districtCoverRepository.findAllByUser_Id(userId).stream()
+                .collect(Collectors.toMap(
+                        DistrictCover::getDistrictCategory,
+                        cover -> cover.getPassportImage().getImageUrl()
+                ));
+
+        // 3. 합치기
+        return counts.stream()
+                .map(row -> {
+                    District district = (District) row[0];
+                    Long count = (Long) row[1];
+                    String thumbnailUrl = coverMap.get(district);
+                    return DistrictResponse.of(district, count, thumbnailUrl);
+                })
+                .toList();
+    }
+
+
+    // ========== 내 여권 목록 조회 (장소별, 커서 기반) ==========
+    public CursorResponse<PassportListResponse> getMyPassports(Long userId,
+                                                               Category category,
+                                                               District districtCategory,
+                                                               Long cursor,
+                                                               int size) {
+        List<Passport> passports = (cursor == null)
+                ? passportRepository.findMyPassportsFirst(userId, category, districtCategory, PageRequest.of(0, size + 1))
+                : passportRepository.findMyPassportsAfterCursor(userId, cursor, category, districtCategory, PageRequest.of(0, size + 1));
+        boolean hasNext = passports.size() > size;
+
+        if (hasNext) {
+            passports = passports.subList(0, size);
+        }
+
+        List<PassportListResponse> content = passports.stream()
+                .map(PassportListResponse::from)
+                .toList();
+
+        Long nextCursor = hasNext ? passports.get(passports.size() - 1).getId() : null;
+
+        return CursorResponse.of(content, hasNext, nextCursor);
+    }
+
+    // ========== 내 여권 통계 조회 ==========
+    public PassportStatsResponse getMyStats(Long userId) {
+        long passportCount = passportRepository.countByUser_Id(userId);
+        long likeCount = likeRepository.countByUser_Id(userId);
+        long scrapCount = scrapRepository.countByUser_Id(userId);
+
+        return new PassportStatsResponse(passportCount, likeCount, scrapCount);
+    }
+
 }
