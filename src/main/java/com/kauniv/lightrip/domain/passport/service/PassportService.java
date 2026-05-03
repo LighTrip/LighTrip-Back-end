@@ -134,6 +134,7 @@ public class PassportService {
 
         District district = passport.getDistrictCategory();
 
+        likeRepository.deleteAllByPassportId(passportId);
         scrapRepository.deleteAllByPassportId(passportId);
         passportRepository.delete(passport);
         passportRepository.flush();
