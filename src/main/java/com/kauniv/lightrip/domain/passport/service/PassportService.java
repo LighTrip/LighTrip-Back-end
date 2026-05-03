@@ -19,13 +19,16 @@ import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import com.kauniv.lightrip.global.enums.District;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
+import com.kauniv.lightrip.domain.passport.dto.response.PassportListResponse;
+import com.kauniv.lightrip.global.common.response.CursorResponse;
+import com.kauniv.lightrip.global.enums.Category;
 
 @Service
 @RequiredArgsConstructor
@@ -245,6 +248,31 @@ public class PassportService {
                     return DistrictResponse.of(district, count, thumbnailUrl);
                 })
                 .toList();
+    }
+
+
+    // ========== 내 여권 목록 조회 (장소별, 커서 기반) ==========
+    public CursorResponse<PassportListResponse> getMyPassports(Long userId,
+                                                               Category category,
+                                                               District districtCategory,
+                                                               Long cursor,
+                                                               int size) {
+        List<Passport> passports = (cursor == null)
+                ? passportRepository.findMyPassportsFirst(userId, category, districtCategory, PageRequest.of(0, size + 1))
+                : passportRepository.findMyPassportsAfterCursor(userId, cursor, category, districtCategory, PageRequest.of(0, size + 1));
+        boolean hasNext = passports.size() > size;
+
+        if (hasNext) {
+            passports = passports.subList(0, size);
+        }
+
+        List<PassportListResponse> content = passports.stream()
+                .map(PassportListResponse::from)
+                .toList();
+
+        Long nextCursor = hasNext ? passports.get(passports.size() - 1).getId() : null;
+
+        return CursorResponse.of(content, hasNext, nextCursor);
     }
 
 }
