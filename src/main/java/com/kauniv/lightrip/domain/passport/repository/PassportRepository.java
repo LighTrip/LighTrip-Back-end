@@ -6,6 +6,11 @@ import com.kauniv.lightrip.domain.passport.entity.Passport;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import com.kauniv.lightrip.global.enums.District;
+import org.springframework.data.jpa.repository.Query;
+
+import java.util.List;
+
 
 public interface PassportRepository extends JpaRepository<Passport, Long> {
 
@@ -21,5 +26,17 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
     Optional<Passport> findFirstByUser_IdAndDistrictCategoryOrderByCreatedAtDesc(
             Long userId, District districtCategory
     );
+
+
+    // 사용자의 지역별 여권 수 조회
+    @Query("""
+        SELECT p.districtCategory, COUNT(p)
+        FROM Passport p
+        WHERE p.user.id = :userId
+        GROUP BY p.districtCategory
+        ORDER BY COUNT(p) DESC
+        """)
+    List<Object[]> countByUserIdGroupByDistrict(Long userId);
+
 
 }
