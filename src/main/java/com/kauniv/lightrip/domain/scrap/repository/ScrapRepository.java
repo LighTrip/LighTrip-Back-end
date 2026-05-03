@@ -36,4 +36,6 @@ public interface ScrapRepository extends JpaRepository<Scrap, Long> {
             ORDER BY s.id DESC
             """)
     List<Scrap> findByUserIdAfterCursor(Long userId, Long cursor, Pageable pageable);
+
+    long countByUser_Id(Long userId);
 }
