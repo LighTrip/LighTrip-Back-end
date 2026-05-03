@@ -12,6 +12,7 @@ import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import com.kauniv.lightrip.global.common.response.CursorResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,8 +63,8 @@ public class ScrapService {
     // ========== 내 스크랩 목록 조회 (커서 기반) ==========
     public CursorResponse<ScrapListResponse> getMyScraps(Long userId, Long cursor, int size) {
         List<Scrap> scraps = (cursor == null)
-                ? scrapRepository.findByUserIdFirst(userId, size + 1)
-                : scrapRepository.findByUserIdAfterCursor(userId, cursor, size + 1);
+                ? scrapRepository.findByUserIdFirst(userId, PageRequest.of(0, size + 1))
+                : scrapRepository.findByUserIdAfterCursor(userId, cursor, PageRequest.of(0, size + 1));
 
         boolean hasNext = scraps.size() > size;
 
