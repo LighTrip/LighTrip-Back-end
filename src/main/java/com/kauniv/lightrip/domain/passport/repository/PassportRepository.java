@@ -67,5 +67,6 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
                                               Category category,
                                               District districtCategory,
                                               Pageable pageable);
+    long countByUser_Id(Long userId);
 
 }

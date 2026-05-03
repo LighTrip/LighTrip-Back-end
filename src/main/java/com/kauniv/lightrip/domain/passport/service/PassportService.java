@@ -29,6 +29,8 @@ import java.util.stream.Collectors;
 import com.kauniv.lightrip.domain.passport.dto.response.PassportListResponse;
 import com.kauniv.lightrip.global.common.response.CursorResponse;
 import com.kauniv.lightrip.global.enums.Category;
+import com.kauniv.lightrip.domain.passport.dto.response.PassportStatsResponse;
+import com.kauniv.lightrip.domain.like.repository.LikeRepository;
 
 @Service
 @RequiredArgsConstructor
@@ -42,6 +44,7 @@ public class PassportService {
     private final TeamMemberRepository teamMemberRepository;
     private final FriendRepository friendRepository;
     private final DistrictCoverRepository districtCoverRepository;
+    private final LikeRepository likeRepository;
 
     // ========== 등록 ==========
     @Transactional
@@ -273,6 +276,15 @@ public class PassportService {
         Long nextCursor = hasNext ? passports.get(passports.size() - 1).getId() : null;
 
         return CursorResponse.of(content, hasNext, nextCursor);
+    }
+
+    // ========== 내 여권 통계 조회 ==========
+    public PassportStatsResponse getMyStats(Long userId) {
+        long passportCount = passportRepository.countByUser_Id(userId);
+        long likeCount = likeRepository.countByUser_Id(userId);
+        long scrapCount = scrapRepository.countByUser_Id(userId);
+
+        return new PassportStatsResponse(passportCount, likeCount, scrapCount);
     }
 
 }

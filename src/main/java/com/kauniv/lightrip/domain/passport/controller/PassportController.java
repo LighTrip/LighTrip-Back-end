@@ -3,6 +3,7 @@ package com.kauniv.lightrip.domain.passport.controller;
 import com.kauniv.lightrip.domain.passport.dto.request.PassportCreateRequest;
 import com.kauniv.lightrip.domain.passport.dto.request.PassportUpdateRequest;
 import com.kauniv.lightrip.domain.passport.dto.response.PassportResponse;
+import com.kauniv.lightrip.domain.passport.dto.response.PassportStatsResponse;
 import com.kauniv.lightrip.domain.passport.service.PassportService;
 import com.kauniv.lightrip.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -114,5 +115,14 @@ public class PassportController {
         return ApiResponse.success(passportService.getMyPassports(userId, category, districtCategory, cursor, size));
     }
 
+
+    @Operation(summary = "내 여권 통계 조회",
+            description = "내가 작성한 여권 수, 좋아요 누른 수, 스크랩한 수를 조회합니다.")
+    @GetMapping("/stats/me")
+    public ApiResponse<PassportStatsResponse> getMyStats(
+            @AuthenticationPrincipal Long userId
+    ) {
+        return ApiResponse.success(passportService.getMyStats(userId));
+    }
 
 }
