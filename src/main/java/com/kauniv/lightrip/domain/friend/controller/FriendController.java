@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-@Tag(name = "친구 관리 API", description = "친구 요청, 수락/거절, 삭제 기능을 제공합니다.")
+import java.util.List;
+
+@Tag(name = "친구 관리 API", description = "친구 요청, 수락/거절, 삭제, 조회 기능을 제공합니다.")
 @RestController
 @RequestMapping("/api/v1/friends")
 @RequiredArgsConstructor
@@ -55,5 +57,32 @@ public class FriendController {
 
         friendService.deleteFriend(userId, friendId);
         return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "내 친구 목록 조회", description = "수락된 친구 목록을 조회합니다.")
+    @GetMapping
+    public ResponseEntity<List<FriendResponseDto>> getFriends(
+            @AuthenticationPrincipal Long userId) {
+
+        List<FriendResponseDto> response = friendService.getFriends(userId);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "받은 친구 요청 조회", description = "아직 수락하지 않은 친구 요청 목록을 조회합니다.")
+    @GetMapping("/pending")
+    public ResponseEntity<List<FriendResponseDto>> getPendingRequests(
+            @AuthenticationPrincipal Long userId) {
+
+        List<FriendResponseDto> response = friendService.getPendingRequests(userId);
+        return ResponseEntity.ok(response);
+    }
+
+    @Operation(summary = "친구 코드로 유저 검색", description = "친구 코드로 유저를 검색합니다. 친구 요청 전 상대방 확인용입니다.")
+    @GetMapping("/search")
+    public ResponseEntity<FriendResponseDto> searchByFriendCode(
+            @RequestParam String code) {
+
+        FriendResponseDto response = friendService.searchByFriendCode(code);
+        return ResponseEntity.ok(response);
     }
 }
