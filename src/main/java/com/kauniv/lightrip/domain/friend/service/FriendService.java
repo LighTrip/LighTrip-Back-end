@@ -13,6 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -76,5 +78,41 @@ public class FriendService {
         }
 
         friendRepository.delete(friend);
+    }
+
+    public List<FriendResponseDto> getFriends(Long userId) {
+        List<Friend> friends = friendRepository.findAllFriends(userId);
+
+        return friends.stream()
+                .map(friend -> {
+                    User target = friend.getRequester().getId().equals(userId)
+                            ? friend.getReceiver()
+                            : friend.getRequester();
+                    return FriendResponseDto.from(friend, target);
+                })
+                .toList();
+    }
+
+    public List<FriendResponseDto> getPendingRequests(Long userId) {
+        List<Friend> pendings = friendRepository.findPendingRequests(userId);
+
+        return pendings.stream()
+                .map(friend -> FriendResponseDto.from(friend, friend.getRequester()))
+                .toList();
+    }
+
+    public FriendResponseDto searchByFriendCode(String friendCode) {
+        User user = userRepository.findByFriendCode(friendCode)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        return new FriendResponseDto(
+                null,
+                user.getId(),
+                user.getNickname(),
+                user.getProfileImg(),
+                user.getFriendCode(),
+                null,
+                null
+        );
     }
 }
