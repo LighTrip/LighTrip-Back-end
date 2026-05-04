@@ -2,7 +2,7 @@ name: Deploy to EC2
 
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
 
 env:
   AWS_REGION: ap-northeast-2
@@ -33,11 +33,12 @@ jobs:
           IMAGE_TAG: ${{ github.sha }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker tag $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.ref_name }}
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:latest
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:${{ github.ref_name }}
 
-      - name: Deploy to EC2
+      - name: Deploy to EC2 (prod)
+        if: github.ref_name == 'main'
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -48,16 +49,42 @@ jobs:
             aws ecr get-login-password --region ap-northeast-2 | \
               docker login --username AWS --password-stdin $ECR_REGISTRY
 
-            docker pull $ECR_REGISTRY/lightrip-server:latest
+            docker pull $ECR_REGISTRY/lightrip-server:main
 
-            docker stop lightrip-server || true
-            docker rm lightrip-server || true
+            docker stop lightrip-prod || true
+            docker rm lightrip-prod || true
 
             docker run -d \
-              --name lightrip-server \
+              --name lightrip-prod \
               --restart always \
               -p 8080:8080 \
               --env-file /home/ec2-user/.env \
-              $ECR_REGISTRY/lightrip-server:latest
+              $ECR_REGISTRY/lightrip-server:main
+        env:
+          ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
+
+      - name: Deploy to EC2 (dev)
+        if: github.ref_name == 'develop'
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          envs: ECR_REGISTRY
+          script: |
+            aws ecr get-login-password --region ap-northeast-2 | \
+              docker login --username AWS --password-stdin $ECR_REGISTRY
+
+            docker pull $ECR_REGISTRY/lightrip-server:develop
+
+            docker stop lightrip-dev || true
+            docker rm lightrip-dev || true
+
+            docker run -d \
+              --name lightrip-dev \
+              --restart always \
+              -p 8081:8080 \
+              --env-file /home/ec2-user/.env.dev \
+              $ECR_REGISTRY/lightrip-server:develop
         env:
           ECR_REGISTRY: ${{ secrets.ECR_REGISTRY }}
