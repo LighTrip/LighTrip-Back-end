@@ -43,4 +43,8 @@ public class Friend {
     public enum Status {
         PENDING, ACCEPTED
     }
+
+    public void accept() {
+        this.status = Status.ACCEPTED;
+    }
 }

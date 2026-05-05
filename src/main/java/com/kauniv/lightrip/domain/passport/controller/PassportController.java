@@ -3,6 +3,7 @@ package com.kauniv.lightrip.domain.passport.controller;
 import com.kauniv.lightrip.domain.passport.dto.request.PassportCreateRequest;
 import com.kauniv.lightrip.domain.passport.dto.request.PassportUpdateRequest;
 import com.kauniv.lightrip.domain.passport.dto.response.PassportResponse;
+import com.kauniv.lightrip.domain.passport.dto.response.PassportStatsResponse;
 import com.kauniv.lightrip.domain.passport.service.PassportService;
 import com.kauniv.lightrip.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -12,6 +13,13 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
+import java.util.List;
+import com.kauniv.lightrip.domain.passport.dto.response.PassportListResponse;
+import com.kauniv.lightrip.global.common.response.CursorResponse;
+import com.kauniv.lightrip.global.enums.Category;
+import com.kauniv.lightrip.global.enums.District;
+
 
 @Tag(name = "Passport", description = "여권 API")
 @RestController
@@ -62,4 +70,59 @@ public class PassportController {
     ) {
         return ApiResponse.success(passportService.getPassport(userId, passportId));
     }
+
+    @Operation(summary = "내 기록 지역 조회",
+            description = "내가 여권을 등록한 지역 목록을 조회합니다. 지역별 여권 수와 대표 이미지를 포함합니다.")
+    @GetMapping("/districts/me")
+    public ApiResponse<List<DistrictResponse>> getMyDistricts(
+            @AuthenticationPrincipal Long userId
+    ) {
+        return ApiResponse.success(passportService.getMyDistricts(userId));
+    }
+
+    @Operation(
+            summary = "내 여권 목록 조회 (장소별)",
+            description = """
+                내가 등록한 여권을 최신순으로 조회합니다.
+                
+                **필터링**
+                - `category`: 카테고리별 필터 (CAFE, RESTAURANT, BAR, TOURIST, NATURE, CULTURE, ACTIVITY, ACCOMMODATION, SHOPPING, ETC)
+                - `districtCategory`: 지역별 필터 (MAPO, GANGNAM, YONGSAN 등)
+                - 필터는 복수 적용 가능합니다. (예: category=CAFE & districtCategory=MAPO → 마포구 카페만)
+                - 필터를 넣지 않으면 전체 여권이 조회됩니다.
+                
+                **페이징 (커서 기반 무한스크롤)**
+                - 첫 요청: `cursor` 파라미터 없이 호출
+                - 다음 페이지: 응답의 `nextCursor` 값을 `cursor`에 넣어서 호출
+                - `hasNext`가 `false`이면 마지막 페이지입니다.
+                """)
+    @GetMapping("/me")
+    public ApiResponse<CursorResponse<PassportListResponse>> getMyPassports(
+            @AuthenticationPrincipal Long userId,
+
+            @Parameter(description = "카테고리 필터 (선택). 예: CAFE, RESTAURANT, BAR, TOURIST, NATURE, CULTURE, ACTIVITY, ACCOMMODATION, SHOPPING, ETC")
+            @RequestParam(required = false) Category category,
+
+            @Parameter(description = "지역 필터 (선택). 예: MAPO, GANGNAM, YONGSAN, JONGNO 등")
+            @RequestParam(required = false) District districtCategory,
+
+            @Parameter(description = "커서 (이전 응답의 nextCursor 값). 첫 요청 시 생략")
+            @RequestParam(required = false) Long cursor,
+
+            @Parameter(description = "한 페이지에 가져올 여권 수 (기본값: 10, 최대: 50)")
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.success(passportService.getMyPassports(userId, category, districtCategory, cursor, size));
+    }
+
+
+    @Operation(summary = "내 여권 통계 조회",
+            description = "내가 작성한 여권 수, 좋아요 누른 수, 스크랩한 수를 조회합니다.")
+    @GetMapping("/stats/me")
+    public ApiResponse<PassportStatsResponse> getMyStats(
+            @AuthenticationPrincipal Long userId
+    ) {
+        return ApiResponse.success(passportService.getMyStats(userId));
+    }
+
 }
