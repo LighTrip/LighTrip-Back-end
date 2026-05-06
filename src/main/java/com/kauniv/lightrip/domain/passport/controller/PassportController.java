@@ -19,6 +19,9 @@ import com.kauniv.lightrip.domain.passport.dto.response.PassportListResponse;
 import com.kauniv.lightrip.global.common.response.CursorResponse;
 import com.kauniv.lightrip.global.enums.Category;
 import com.kauniv.lightrip.global.enums.District;
+import com.kauniv.lightrip.domain.passport.dto.response.FeedPassportResponse;
+import com.kauniv.lightrip.global.common.response.FeedCursorResponse;
+import java.math.BigDecimal;
 
 
 @Tag(name = "Passport", description = "여권 API")
@@ -123,6 +126,35 @@ public class PassportController {
             @AuthenticationPrincipal Long userId
     ) {
         return ApiResponse.success(passportService.getMyStats(userId));
+    }
+
+    @Operation(summary = "릴스형 여권 피드 조회",
+            description = "다른 사용자의 PUBLIC 여권을 인기순으로 조회합니다. " +
+                    "카테고리/지역/위치 필터 지원, 커서 기반 무한스크롤.")
+    @GetMapping("/api/v1/feed")
+    public ApiResponse<FeedCursorResponse<FeedPassportResponse>> getFeed(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "카테고리 필터")
+            @RequestParam(required = false) Category category,
+            @Parameter(description = "지역 필터")
+            @RequestParam(required = false) District district,
+            @Parameter(description = "사용자 위도")
+            @RequestParam(required = false) BigDecimal latitude,
+            @Parameter(description = "사용자 경도")
+            @RequestParam(required = false) BigDecimal longitude,
+            @Parameter(description = "반경(km), 기본 5")
+            @RequestParam(defaultValue = "5") int radius,
+            @Parameter(description = "커서 (마지막 여권 ID)")
+            @RequestParam(required = false) Long cursor,
+            @Parameter(description = "커서 점수 (마지막 인기 점수)")
+            @RequestParam(required = false) Long cursorScore,
+            @Parameter(description = "조회 개수, 기본 10")
+            @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.success(
+                passportService.getFeed(userId, category, district, latitude, longitude,
+                        radius, cursor, cursorScore, size)
+        );
     }
 
 }
