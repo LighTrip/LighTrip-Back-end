@@ -23,6 +23,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
+
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -31,6 +33,13 @@ import com.kauniv.lightrip.global.common.response.CursorResponse;
 import com.kauniv.lightrip.global.enums.Category;
 import com.kauniv.lightrip.domain.passport.dto.response.PassportStatsResponse;
 import com.kauniv.lightrip.domain.like.repository.LikeRepository;
+import com.kauniv.lightrip.domain.passport.dto.response.FeedPassportResponse;
+import com.kauniv.lightrip.global.common.response.FeedCursorResponse;
+import java.math.RoundingMode;
+import java.util.HashSet;
+import java.util.Objects;
+import java.util.Set;
+
 
 @Service
 @RequiredArgsConstructor
@@ -287,5 +296,113 @@ public class PassportService {
 
         return new PassportStatsResponse(passportCount, likeCount, scrapCount);
     }
+
+    private static final int EARTH_RADIUS_KM = 6371;
+
+    // ========== 릴스형 여권 피드 조회 ==========
+    public FeedCursorResponse<FeedPassportResponse> getFeed(
+            Long userId,
+            Category category,
+            District district,
+            BigDecimal latitude,
+            BigDecimal longitude,
+            int radius,
+            Long cursor,
+            Long cursorScore,
+            int size
+    ) {
+        // 1. 위치 파라미터 검증
+        validateLocation(latitude, longitude);
+
+        // 2. 후보 여권 ID 조회 (정렬된 상태)
+        List<Long> candidateIds = passportRepository.findFeedPassportIds(
+                userId,
+                category != null ? category.name() : null,
+                district != null ? district.name() : null,
+                latitude,
+                longitude,
+                radius,
+                cursor,
+                cursorScore,
+                size + 1
+        );
+
+        if (candidateIds.isEmpty()) {
+            return FeedCursorResponse.of(List.of(), false, null, null);
+        }
+
+        boolean hasNext = candidateIds.size() > size;
+        if (hasNext) {
+            candidateIds = candidateIds.subList(0, size);
+        }
+
+        // 3. 여권 엔티티 fetch join (N+1 방지)
+        List<Passport> passports = passportRepository.findAllByIdsForFeed(candidateIds);
+
+        // 4. 정렬 순서 복원 (IN 쿼리는 순서 보장 X)
+        Map<Long, Passport> passportMap = passports.stream()
+                .collect(Collectors.toMap(Passport::getId, p -> p));
+        List<Passport> ordered = candidateIds.stream()
+                .map(passportMap::get)
+                .filter(Objects::nonNull)
+                .toList();
+
+        // 5. 좋아요/스크랩/친구 일괄 조회
+        Set<Long> likedIds = new HashSet<>(likeRepository.findLikedPassportIds(userId, candidateIds));
+        Set<Long> scrappedIds = new HashSet<>(scrapRepository.findScrappedPassportIds(userId, candidateIds));
+
+        List<Long> writerIds = ordered.stream()
+                .map(p -> p.getUser().getId())
+                .distinct()
+                .toList();
+        Set<Long> friendIds = new HashSet<>(friendRepository.findFriendUserIdsAmong(userId, writerIds));
+
+        // 6. 응답 구성
+        List<FeedPassportResponse> content = ordered.stream()
+                .map(p -> {
+                    BigDecimal distance = (latitude != null && longitude != null)
+                            ? calculateDistance(latitude, longitude, p.getLatitude(), p.getLongitude())
+                            : null;
+                    return FeedPassportResponse.of(p, likedIds, scrappedIds, friendIds, distance);
+                })
+                .toList();
+
+        // 7. nextCursor 추출
+        Long nextCursor = null;
+        Long nextCursorScore = null;
+        if (hasNext && !content.isEmpty()) {
+            FeedPassportResponse last = content.get(content.size() - 1);
+            nextCursor = last.passportId();
+            nextCursorScore = last.popularityScore();
+        }
+
+        return FeedCursorResponse.of(content, hasNext, nextCursor, nextCursorScore);
+    }
+
+    // ========== 위치 파라미터 검증 ==========
+    private void validateLocation(BigDecimal latitude, BigDecimal longitude) {
+        if ((latitude == null) != (longitude == null)) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+    }
+
+    // ========== Haversine 거리 계산 ==========
+    private BigDecimal calculateDistance(BigDecimal lat1, BigDecimal lng1,
+                                         BigDecimal lat2, BigDecimal lng2) {
+        double rLat1 = Math.toRadians(lat1.doubleValue());
+        double rLat2 = Math.toRadians(lat2.doubleValue());
+        double dLat = Math.toRadians(lat2.doubleValue() - lat1.doubleValue());
+        double dLng = Math.toRadians(lng2.doubleValue() - lng1.doubleValue());
+
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(rLat1) * Math.cos(rLat2)
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        double distance = EARTH_RADIUS_KM * c;
+
+        return BigDecimal.valueOf(distance).setScale(2, RoundingMode.HALF_UP);
+    }
+
+
 
 }
