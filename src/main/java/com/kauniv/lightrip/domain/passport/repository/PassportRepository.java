@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import com.kauniv.lightrip.global.enums.Category;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.repository.query.Param;
 
 
 public interface PassportRepository extends JpaRepository<Passport, Long> {
@@ -69,4 +70,53 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
                                               Pageable pageable);
     long countByUser_Id(Long userId);
 
+    // ========== 피드 조회: 인기순 + 필터 + 커서 (정렬된 ID 리스트) ==========
+    @Query(value = """
+        SELECT p.passport_id
+        FROM passport p
+        WHERE p.user_id <> :userId
+          AND p.visibility = 'PUBLIC'
+          AND (CAST(:category AS varchar) IS NULL
+               OR p.category = CAST(:category AS varchar))
+          AND (CAST(:district AS varchar) IS NULL
+               OR p.district_category = CAST(:district AS varchar))
+          AND (
+            :latitude IS NULL OR :longitude IS NULL
+            OR (6371 * acos(
+                  LEAST(1.0, GREATEST(-1.0,
+                    cos(radians(:latitude)) * cos(radians(p.latitude))
+                    * cos(radians(p.longitude) - radians(:longitude))
+                    + sin(radians(:latitude)) * sin(radians(p.latitude))
+                  ))
+                )) <= :radius
+          )
+          AND (
+            :cursor IS NULL OR :cursorScore IS NULL
+            OR (p.like_count * 2 + p.scrap_count * 3) < :cursorScore
+            OR ((p.like_count * 2 + p.scrap_count * 3) = :cursorScore
+                AND p.passport_id < :cursor)
+          )
+        ORDER BY (p.like_count * 2 + p.scrap_count * 3) DESC, p.passport_id DESC
+        LIMIT :limit
+        """, nativeQuery = true)
+    List<Long> findFeedPassportIds(
+            @Param("userId") Long userId,
+            @Param("category") String category,
+            @Param("district") String district,
+            @Param("latitude") BigDecimal latitude,
+            @Param("longitude") BigDecimal longitude,
+            @Param("radius") int radius,
+            @Param("cursor") Long cursor,
+            @Param("cursorScore") Long cursorScore,
+            @Param("limit") int limit
+    );
+
+    // ========== ID 리스트로 여권 + 이미지 + 작성자 fetch ==========
+    @Query("""
+        SELECT DISTINCT p FROM Passport p
+        LEFT JOIN FETCH p.images
+        JOIN FETCH p.user
+        WHERE p.id IN :ids
+        """)
+    List<Passport> findAllByIdsForFeed(List<Long> ids);
 }
