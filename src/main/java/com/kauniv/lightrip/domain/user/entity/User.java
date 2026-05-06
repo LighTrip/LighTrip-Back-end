@@ -21,7 +21,7 @@ public class User {
     @Column(name = "user_id")
     private Long id;
 
-    @Column(name = "nickname", nullable = false, length = 50)
+    @Column(name = "nickname", nullable = false, unique = true, length = 50)
     private String nickname;
 
     @Column(name = "email", length = 50)
@@ -50,5 +50,10 @@ public class User {
         if (this.friendCode == null) {
             this.friendCode = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
         }
+    }
+
+    public void updateProfile(String nickname, String profileImg) {
+        this.nickname = nickname;
+        this.profileImg = profileImg;
     }
 }

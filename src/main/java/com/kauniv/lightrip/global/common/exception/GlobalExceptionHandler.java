@@ -8,6 +8,7 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.util.stream.Collectors;
 
@@ -25,7 +26,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(code, e.getMessage()));
     }
 
-    /** @Valid 검증 실패 */
+    /** validation(@Valid) 검증 실패 */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException e) {
         String detail = e.getBindingResult().getFieldErrors().stream()
@@ -53,6 +54,33 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ErrorCode.HANDLE_ACCESS_DENIED.getStatus())
                 .body(ApiResponse.error(ErrorCode.HANDLE_ACCESS_DENIED));
+    }
+
+    /** DB 제약조건 위반(유니크 등) */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        String message = String.valueOf(e.getMostSpecificCause().getMessage());
+        log.warn("[DataIntegrityViolation] {}", message);
+
+        String lower = message == null ? "" : message.toLowerCase();
+
+        // 1) 제약조건명으로 판별 (Postgres: duplicate key value violates unique constraint "uk_users_nickname")
+        if (lower.contains("uk_users_nickname")) {
+            return ResponseEntity
+                    .status(ErrorCode.DUPLICATE_NICKNAME.getStatus())
+                    .body(ApiResponse.error(ErrorCode.DUPLICATE_NICKNAME));
+        }
+
+        // 2) fallback: 환경에 따라 constraint명이 안 보일 수 있어 컬럼명 기반으로 한 번 더 매핑
+        if (lower.contains("nickname")) {
+            return ResponseEntity
+                    .status(ErrorCode.DUPLICATE_NICKNAME.getStatus())
+                    .body(ApiResponse.error(ErrorCode.DUPLICATE_NICKNAME));
+        }
+
+        return ResponseEntity
+                .status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
+                .body(ApiResponse.error(ErrorCode.INVALID_INPUT_VALUE));
     }
 
     /** 그 외 모든 예외 (최후의 보루) */
