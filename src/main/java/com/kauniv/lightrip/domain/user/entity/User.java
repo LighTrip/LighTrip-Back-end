@@ -37,6 +37,12 @@ public class User {
     @Column(name = "current_mode")
     private CurrentMode currentMode;
 
+    @Column(name = "location", length = 100)
+    private String location;
+
+    @Column(name = "bio", columnDefinition = "TEXT")
+    private String bio;
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -55,5 +61,12 @@ public class User {
     public void updateProfile(String nickname, String profileImg) {
         this.nickname = nickname;
         this.profileImg = profileImg;
+    }
+
+    public void updateProfile(String nickname, String profileImg, String location, String bio) {
+        this.nickname = nickname;
+        this.profileImg = profileImg;
+        this.location = location;
+        this.bio = bio;
     }
 }

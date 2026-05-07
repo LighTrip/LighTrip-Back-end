@@ -12,4 +12,10 @@ public class UpdateProfileRequest {
     private String nickname;
 
     private String profileImg;
+
+    @Size(max = 100, message = "활동 지역은 100자 이하여야 합니다.")
+    private String location;
+
+    @Size(max = 200, message = "한 줄 소개는 200자 이하여야 합니다.")
+    private String bio;
 }
