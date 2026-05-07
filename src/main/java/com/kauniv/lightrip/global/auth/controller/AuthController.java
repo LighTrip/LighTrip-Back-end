@@ -29,19 +29,23 @@ public class AuthController {
         );
     }
 
-    @Operation(summary = "로그아웃", description = "리프레시 토큰을 무효화하여 로그아웃 처리합니다.")
+    @Operation(summary = "로그아웃", description = "액세스 토큰을 블랙리스트에 등록하고 리프레시 토큰을 삭제합니다.")
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(
-            @AuthenticationPrincipal Long userId) {
-        authService.logout(userId);
+            @AuthenticationPrincipal Long userId,
+            @RequestHeader("Authorization") String bearerToken) {
+        String accessToken = bearerToken.substring(7);
+        authService.logout(userId, accessToken);
         return ResponseEntity.ok().build();
     }
 
     @Operation(summary = "회원탈퇴", description = "유저 및 관련 인증 정보를 모두 삭제합니다.")
     @DeleteMapping("/withdraw")
     public ResponseEntity<Void> withdraw(
-            @AuthenticationPrincipal Long userId) {
-        authService.withdraw(userId);
+            @AuthenticationPrincipal Long userId,
+            @RequestHeader("Authorization") String bearerToken) {
+        String accessToken = bearerToken.substring(7);
+        authService.withdraw(userId, accessToken);
         return ResponseEntity.ok().build();
     }
 }

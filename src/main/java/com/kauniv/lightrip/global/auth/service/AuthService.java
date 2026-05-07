@@ -1,9 +1,11 @@
 package com.kauniv.lightrip.global.auth.service;
 
 import com.kauniv.lightrip.domain.user.repository.UserRepository;
-import com.kauniv.lightrip.global.auth.entity.Auth;
 import com.kauniv.lightrip.global.auth.repository.AuthRepository;
+import com.kauniv.lightrip.global.common.exception.BusinessException;
+import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import com.kauniv.lightrip.global.jwt.JwtProvider;
+import com.kauniv.lightrip.global.redis.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,32 +18,40 @@ public class AuthService {
     private final AuthRepository authRepository;
     private final JwtProvider jwtProvider;
     private final UserRepository userRepository;
+    private final RedisService redisService;
 
     public String reissueAccessToken(String refreshToken) {
         if (!jwtProvider.validateToken(refreshToken)) {
-            throw new RuntimeException("유효하지 않은 리프레시 토큰입니다.");
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
 
         Long userId = jwtProvider.getUserId(refreshToken);
 
-        Auth auth = authRepository.findByUser_Id(userId)
-                .orElseThrow(() -> new RuntimeException("Auth를 찾을 수 없습니다."));
-
-        if (!auth.getRefreshToken().equals(refreshToken)) {
-            throw new RuntimeException("리프레시 토큰이 일치하지 않습니다.");
+        if (!redisService.validateRefreshToken(userId, refreshToken)) {
+            throw new BusinessException(ErrorCode.REFRESH_TOKEN_MISMATCH);
         }
 
-        return jwtProvider.generateAccessToken(userId);
+        String newAccessToken = jwtProvider.generateAccessToken(userId);
+        String newRefreshToken = jwtProvider.generateRefreshToken(userId);
+        redisService.saveRefreshToken(userId, newRefreshToken, jwtProvider.getRefreshTokenExpiration());
+
+        return newAccessToken;
     }
 
-    public void logout(Long userId) {
-        Auth auth = authRepository.findByUser_Id(userId)
-                .orElseThrow(() -> new RuntimeException("Auth를 찾을 수 없습니다."));
-
-        auth.updateRefreshToken(null);
+    public void logout(Long userId, String accessToken) {
+        long expiration = jwtProvider.getExpiration(accessToken);
+        if (expiration > 0) {
+            redisService.addBlacklist(accessToken, expiration);
+        }
+        redisService.deleteRefreshToken(userId);
     }
 
-    public void withdraw(Long userId) {
+    public void withdraw(Long userId, String accessToken) {
+        long expiration = jwtProvider.getExpiration(accessToken);
+        if (expiration > 0) {
+            redisService.addBlacklist(accessToken, expiration);
+        }
+        redisService.deleteRefreshToken(userId);
         authRepository.deleteByUser_Id(userId);
         userRepository.deleteById(userId);
     }
