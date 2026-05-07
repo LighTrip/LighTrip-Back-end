@@ -39,6 +39,8 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .orElseThrow(() -> new RuntimeException("Auth를 찾을 수 없습니다."));
         auth.updateRefreshToken(refreshToken);
 
+        System.out.println("===== ACCESS TOKEN: " + accessToken + " =====");
+
         boolean isNewUser = oAuth2User.isNewUser();
 
         String deepLink = String.format(
