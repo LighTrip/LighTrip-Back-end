@@ -1,5 +1,6 @@
 package com.kauniv.lightrip.global.common.exception;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.kauniv.lightrip.global.common.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +10,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.util.stream.Collectors;
 
@@ -76,6 +78,39 @@ public class GlobalExceptionHandler {
             return ResponseEntity
                     .status(ErrorCode.DUPLICATE_NICKNAME.getStatus())
                     .body(ApiResponse.error(ErrorCode.DUPLICATE_NICKNAME));
+        }
+
+        return ResponseEntity
+                .status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
+                .body(ApiResponse.error(ErrorCode.INVALID_INPUT_VALUE));
+    }
+
+    /** 요청 바디 파싱 실패(JSON enum 변환 실패 등) */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(HttpMessageNotReadableException e) {
+        log.warn("[HttpMessageNotReadable] {}", e.getMessage());
+
+        Throwable cause = e.getCause();
+        if (cause instanceof InvalidFormatException ife) {
+            Class<?> targetType = ife.getTargetType();
+
+            if (targetType != null && targetType.isEnum()) {
+                String fieldName = ife.getPath() != null && !ife.getPath().isEmpty()
+                        ? ife.getPath().getFirst().getFieldName()
+                        : "";
+
+                String allowedValues = java.util.Arrays.stream(targetType.getEnumConstants())
+                        .map(Object::toString)
+                        .sorted()
+                        .collect(java.util.stream.Collectors.joining(", "));
+
+                String prettyField = (fieldName == null || fieldName.isBlank()) ? "요청 값" : fieldName;
+                String detail = String.format("%s은(는) %s 중 하나여야 합니다.", prettyField, allowedValues);
+
+                return ResponseEntity
+                        .status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
+                        .body(ApiResponse.error(ErrorCode.INVALID_INPUT_VALUE, detail));
+            }
         }
 
         return ResponseEntity
