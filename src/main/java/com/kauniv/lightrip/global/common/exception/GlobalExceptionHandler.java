@@ -1,5 +1,6 @@
 package com.kauniv.lightrip.global.common.exception;
 
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import com.kauniv.lightrip.global.common.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +9,8 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 
 import java.util.stream.Collectors;
 
@@ -25,7 +28,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(code, e.getMessage()));
     }
 
-    /** @Valid 검증 실패 */
+    /** validation(@Valid) 검증 실패 */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidation(MethodArgumentNotValidException e) {
         String detail = e.getBindingResult().getFieldErrors().stream()
@@ -53,6 +56,66 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(ErrorCode.HANDLE_ACCESS_DENIED.getStatus())
                 .body(ApiResponse.error(ErrorCode.HANDLE_ACCESS_DENIED));
+    }
+
+    /** DB 제약조건 위반(유니크 등) */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(DataIntegrityViolationException e) {
+        String message = String.valueOf(e.getMostSpecificCause().getMessage());
+        log.warn("[DataIntegrityViolation] {}", message);
+
+        String lower = message == null ? "" : message.toLowerCase();
+
+        // 1) 제약조건명으로 판별 (Postgres: duplicate key value violates unique constraint "uk_users_nickname")
+        if (lower.contains("uk_users_nickname")) {
+            return ResponseEntity
+                    .status(ErrorCode.DUPLICATE_NICKNAME.getStatus())
+                    .body(ApiResponse.error(ErrorCode.DUPLICATE_NICKNAME));
+        }
+
+        // 2) fallback: 환경에 따라 constraint명이 안 보일 수 있어 컬럼명 기반으로 한 번 더 매핑
+        if (lower.contains("nickname")) {
+            return ResponseEntity
+                    .status(ErrorCode.DUPLICATE_NICKNAME.getStatus())
+                    .body(ApiResponse.error(ErrorCode.DUPLICATE_NICKNAME));
+        }
+
+        return ResponseEntity
+                .status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
+                .body(ApiResponse.error(ErrorCode.INVALID_INPUT_VALUE));
+    }
+
+    /** 요청 바디 파싱 실패(JSON enum 변환 실패 등) */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadable(HttpMessageNotReadableException e) {
+        log.warn("[HttpMessageNotReadable] {}", e.getMessage());
+
+        Throwable cause = e.getCause();
+        if (cause instanceof InvalidFormatException ife) {
+            Class<?> targetType = ife.getTargetType();
+
+            if (targetType != null && targetType.isEnum()) {
+                String fieldName = ife.getPath() != null && !ife.getPath().isEmpty()
+                        ? ife.getPath().getFirst().getFieldName()
+                        : "";
+
+                String allowedValues = java.util.Arrays.stream(targetType.getEnumConstants())
+                        .map(Object::toString)
+                        .sorted()
+                        .collect(java.util.stream.Collectors.joining(", "));
+
+                String prettyField = (fieldName == null || fieldName.isBlank()) ? "요청 값" : fieldName;
+                String detail = String.format("%s은(는) %s 중 하나여야 합니다.", prettyField, allowedValues);
+
+                return ResponseEntity
+                        .status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
+                        .body(ApiResponse.error(ErrorCode.INVALID_INPUT_VALUE, detail));
+            }
+        }
+
+        return ResponseEntity
+                .status(ErrorCode.INVALID_INPUT_VALUE.getStatus())
+                .body(ApiResponse.error(ErrorCode.INVALID_INPUT_VALUE));
     }
 
     /** 그 외 모든 예외 (최후의 보루) */

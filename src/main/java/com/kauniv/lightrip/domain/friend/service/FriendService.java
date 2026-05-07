@@ -1,5 +1,6 @@
 package com.kauniv.lightrip.domain.friend.service;
 
+import com.kauniv.lightrip.domain.friend.dto.request.FriendAction;
 import com.kauniv.lightrip.domain.friend.dto.request.FriendRequestDto;
 import com.kauniv.lightrip.domain.friend.dto.request.FriendStatusUpdateDto;
 import com.kauniv.lightrip.domain.friend.dto.response.FriendResponseDto;
@@ -58,7 +59,7 @@ public class FriendService {
             throw new BusinessException(ErrorCode.FRIEND_NOT_RECEIVER);
         }
 
-        if ("ACCEPT".equalsIgnoreCase(dto.action())) {
+        if (dto.action() == FriendAction.ACCEPT) {
             friend.accept();
             return FriendResponseDto.from(friend, friend.getRequester());
         } else {

@@ -21,6 +21,7 @@ public enum ErrorCode {
 
     // ===== User =====
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "존재하지 않는 사용자입니다."),
+    DUPLICATE_NICKNAME(HttpStatus.CONFLICT, "U002", "이미 사용 중인 닉네임입니다."),
 
     // ===== Passport =====
     PASSPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "P001", "존재하지 않는 여권입니다."),
