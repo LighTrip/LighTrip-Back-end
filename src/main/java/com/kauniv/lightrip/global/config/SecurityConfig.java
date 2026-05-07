@@ -4,6 +4,7 @@ import com.kauniv.lightrip.global.jwt.JwtFilter;
 import com.kauniv.lightrip.global.jwt.JwtProvider;
 import com.kauniv.lightrip.global.oauth.CustomOAuth2UserService;
 import com.kauniv.lightrip.global.oauth.OAuth2SuccessHandler;
+import com.kauniv.lightrip.global.redis.service.RedisService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,6 +23,7 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2SuccessHandler oAuth2SuccessHandler;
     private final JwtProvider jwtProvider;
+    private final RedisService redisService;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -46,7 +48,7 @@ public class SecurityConfig {
                         .successHandler(oAuth2SuccessHandler)
                 )
                 .addFilterBefore(
-                        new JwtFilter(jwtProvider),
+                        new JwtFilter(jwtProvider, redisService),
                         UsernamePasswordAuthenticationFilter.class
                 );
 
