@@ -1,5 +1,6 @@
 package com.kauniv.lightrip.global.jwt;
 
+import com.kauniv.lightrip.global.redis.service.RedisService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -17,6 +18,7 @@ import java.util.List;
 public class JwtFilter extends OncePerRequestFilter {
 
     private final JwtProvider jwtProvider;
+    private final RedisService redisService;
 
     @Override
     protected void doFilterInternal(
@@ -27,7 +29,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String token = resolveToken(request);
 
-        if (token != null && jwtProvider.validateToken(token)) {
+        if (token != null && jwtProvider.validateToken(token) && !redisService.isBlacklisted(token)) {
             Long userId = jwtProvider.getUserId(token);
 
             UsernamePasswordAuthenticationToken authentication =
@@ -38,6 +40,12 @@ public class JwtFilter extends OncePerRequestFilter {
                     );
 
             SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        } else if (token != null && jwtProvider.validateToken(token) && redisService.isBlacklisted(token)) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            response.setContentType("application/json;charset=UTF-8");
+            response.getWriter().write("{\"code\":\"A002\",\"message\":\"유효하지 않은 토큰입니다.\",\"success\":false}");
+            return;
         }
 
         filterChain.doFilter(request, response);
