@@ -34,6 +34,17 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
         """)
     List<Object[]> countByUserIdGroupByDistrict(Long userId);
 
+    // 친구 지도 조회: PUBLIC 여권 기준 district별 여권 수
+    @Query("""
+        SELECT p.districtCategory, COUNT(p)
+        FROM Passport p
+        WHERE p.user.id = :userId
+          AND p.visibility = com.kauniv.lightrip.global.enums.Visibility.PUBLIC
+        GROUP BY p.districtCategory
+        ORDER BY COUNT(p) DESC
+        """)
+    List<Object[]> countPublicByUserIdGroupByDistrict(@Param("userId") Long userId);
+
     @Query("""
         SELECT p FROM Passport p
         LEFT JOIN FETCH p.images
@@ -112,7 +123,6 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
         """)
     List<Passport> findAllByIdsForFeed(List<Long> ids);
 
-    // ========== 지도 불빛 조회 (Bounding Box + visibility 필터) ==========
     @Query("""
         SELECT DISTINCT p FROM Passport p
         LEFT JOIN FETCH p.images
@@ -128,7 +138,6 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
             List<Visibility> visibilities
     );
 
-    // 친구 여권 조회: visibility = PUBLIC인 여권만 반환
     @Query("""
         SELECT p FROM Passport p
         LEFT JOIN FETCH p.images
