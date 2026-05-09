@@ -139,6 +139,10 @@ public class Passport {
         }
     }
 
+    public void updateVisibility(Visibility visibility) {
+        this.visibility = visibility;
+    }
+
     /**
      * 해당 사용자가 이 여권의 작성자인지 확인
      */
