@@ -2,6 +2,7 @@ package com.kauniv.lightrip.domain.passport.controller;
 
 import com.kauniv.lightrip.domain.passport.dto.request.PassportCreateRequest;
 import com.kauniv.lightrip.domain.passport.dto.request.PassportUpdateRequest;
+import com.kauniv.lightrip.domain.passport.dto.request.PassportVisibilityRequest;
 import com.kauniv.lightrip.domain.passport.dto.response.PassportResponse;
 import com.kauniv.lightrip.domain.passport.dto.response.PassportStatsResponse;
 import com.kauniv.lightrip.domain.passport.service.PassportService;
@@ -24,7 +25,6 @@ import com.kauniv.lightrip.global.common.response.FeedCursorResponse;
 import java.math.BigDecimal;
 import com.kauniv.lightrip.domain.passport.dto.response.LightResponse;
 
-
 @Tag(name = "Passport", description = "여권 API")
 @RestController
 @RequestMapping("/api/v1/passports")
@@ -34,7 +34,7 @@ public class PassportController {
     private final PassportService passportService;
 
     @Operation(summary = "여권 등록",
-            description = "방문 기록을 여권으로 등록합니다. 이미지 1~5장 필수.")
+            description = "방문 기록을 여권으로 등록합니다. 이미지 1~5장 필수. visibility 미입력 시 PUBLIC으로 저장됩니다.")
     @PostMapping
     public ApiResponse<PassportResponse> create(
             @AuthenticationPrincipal Long userId,
@@ -52,6 +52,17 @@ public class PassportController {
             @Valid @RequestBody PassportUpdateRequest request
     ) {
         return ApiResponse.success("여권이 수정되었습니다.", passportService.update(userId, passportId, request));
+    }
+
+    @Operation(summary = "여권 공개 범위 변경",
+            description = "여권의 공개 범위만 단독으로 변경합니다. 작성자 본인만 변경 가능합니다. (PUBLIC / FRIENDS_ONLY / PRIVATE)")
+    @PatchMapping("/{passportId}/visibility")
+    public ApiResponse<PassportResponse> updateVisibility(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "여권 ID") @PathVariable Long passportId,
+            @Valid @RequestBody PassportVisibilityRequest request
+    ) {
+        return ApiResponse.success("공개 범위가 변경되었습니다.", passportService.updateVisibility(userId, passportId, request));
     }
 
     @Operation(summary = "여권 삭제",
@@ -92,8 +103,6 @@ public class PassportController {
                 **필터링**
                 - `category`: 카테고리별 필터 (CAFE, RESTAURANT, BAR, TOURIST, NATURE, CULTURE, ACTIVITY, ACCOMMODATION, SHOPPING, ETC)
                 - `districtCategory`: 지역별 필터 (MAPO, GANGNAM, YONGSAN 등)
-                - 필터는 복수 적용 가능합니다. (예: category=CAFE & districtCategory=MAPO → 마포구 카페만)
-                - 필터를 넣지 않으면 전체 여권이 조회됩니다.
                 
                 **페이징 (커서 기반 무한스크롤)**
                 - 첫 요청: `cursor` 파라미터 없이 호출
@@ -103,22 +112,13 @@ public class PassportController {
     @GetMapping("/me")
     public ApiResponse<CursorResponse<PassportListResponse>> getMyPassports(
             @AuthenticationPrincipal Long userId,
-
-            @Parameter(description = "카테고리 필터 (선택). 예: CAFE, RESTAURANT, BAR, TOURIST, NATURE, CULTURE, ACTIVITY, ACCOMMODATION, SHOPPING, ETC")
-            @RequestParam(required = false) Category category,
-
-            @Parameter(description = "지역 필터 (선택). 예: MAPO, GANGNAM, YONGSAN, JONGNO 등")
-            @RequestParam(required = false) District districtCategory,
-
-            @Parameter(description = "커서 (이전 응답의 nextCursor 값). 첫 요청 시 생략")
-            @RequestParam(required = false) Long cursor,
-
-            @Parameter(description = "한 페이지에 가져올 여권 수 (기본값: 10, 최대: 50)")
-            @RequestParam(defaultValue = "10") int size
+            @Parameter(description = "카테고리 필터 (선택)") @RequestParam(required = false) Category category,
+            @Parameter(description = "지역 필터 (선택)") @RequestParam(required = false) District districtCategory,
+            @Parameter(description = "커서 (이전 응답의 nextCursor 값). 첫 요청 시 생략") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "한 페이지에 가져올 여권 수 (기본값: 10, 최대: 50)") @RequestParam(defaultValue = "10") int size
     ) {
         return ApiResponse.success(passportService.getMyPassports(userId, category, districtCategory, cursor, size));
     }
-
 
     @Operation(summary = "내 여권 통계 조회",
             description = "내가 작성한 여권 수, 좋아요 누른 수, 스크랩한 수를 조회합니다.")
@@ -130,27 +130,18 @@ public class PassportController {
     }
 
     @Operation(summary = "릴스형 여권 피드 조회",
-            description = "다른 사용자의 PUBLIC 여권을 인기순으로 조회합니다. " +
-                    "카테고리/지역/위치 필터 지원, 커서 기반 무한스크롤.")
+            description = "다른 사용자의 PUBLIC 여권을 인기순으로 조회합니다. 카테고리/지역/위치 필터 지원, 커서 기반 무한스크롤.")
     @GetMapping("/api/v1/feed")
     public ApiResponse<FeedCursorResponse<FeedPassportResponse>> getFeed(
             @AuthenticationPrincipal Long userId,
-            @Parameter(description = "카테고리 필터")
-            @RequestParam(required = false) Category category,
-            @Parameter(description = "지역 필터")
-            @RequestParam(required = false) District district,
-            @Parameter(description = "사용자 위도")
-            @RequestParam(required = false) BigDecimal latitude,
-            @Parameter(description = "사용자 경도")
-            @RequestParam(required = false) BigDecimal longitude,
-            @Parameter(description = "반경(km), 기본 5")
-            @RequestParam(defaultValue = "5") int radius,
-            @Parameter(description = "커서 (마지막 여권 ID)")
-            @RequestParam(required = false) Long cursor,
-            @Parameter(description = "커서 점수 (마지막 인기 점수)")
-            @RequestParam(required = false) Long cursorScore,
-            @Parameter(description = "조회 개수, 기본 10")
-            @RequestParam(defaultValue = "10") int size
+            @Parameter(description = "카테고리 필터") @RequestParam(required = false) Category category,
+            @Parameter(description = "지역 필터") @RequestParam(required = false) District district,
+            @Parameter(description = "사용자 위도") @RequestParam(required = false) BigDecimal latitude,
+            @Parameter(description = "사용자 경도") @RequestParam(required = false) BigDecimal longitude,
+            @Parameter(description = "반경(km), 기본 5") @RequestParam(defaultValue = "5") int radius,
+            @Parameter(description = "커서 (마지막 여권 ID)") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "커서 점수 (마지막 인기 점수)") @RequestParam(required = false) Long cursorScore,
+            @Parameter(description = "조회 개수, 기본 10") @RequestParam(defaultValue = "10") int size
     ) {
         return ApiResponse.success(
                 passportService.getFeed(userId, category, district, latitude, longitude,
