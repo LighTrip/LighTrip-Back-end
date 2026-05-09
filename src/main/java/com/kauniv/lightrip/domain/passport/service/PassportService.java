@@ -39,7 +39,8 @@ import java.math.RoundingMode;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
-
+import com.kauniv.lightrip.domain.passport.dto.response.LightResponse;
+import com.kauniv.lightrip.global.enums.Visibility;
 
 @Service
 @RequiredArgsConstructor
@@ -403,6 +404,61 @@ public class PassportService {
         return BigDecimal.valueOf(distance).setScale(2, RoundingMode.HALF_UP);
     }
 
+    // ========== 내 불빛 조회 ==========
+    public List<LightResponse> getMyLights(Long userId,
+                                           BigDecimal minLat, BigDecimal maxLat,
+                                           BigDecimal minLng, BigDecimal maxLng) {
+        validateBoundingBox(minLat, maxLat, minLng, maxLng);
 
+        // 본인은 모든 visibility 노출
+        List<Visibility> allowed = List.of(
+                Visibility.PUBLIC,
+                Visibility.PRIVATE,
+                Visibility.FRIENDS_ONLY
+        );
+
+        return passportRepository.findLightsInBounds(
+                        userId, minLat, maxLat, minLng, maxLng, allowed)
+                .stream()
+                .map(LightResponse::from)
+                .toList();
+    }
+
+    // ========== 특정 사용자 불빛 조회 ==========
+    public List<LightResponse> getUserLights(Long viewerId, Long targetUserId,
+                                             BigDecimal minLat, BigDecimal maxLat,
+                                             BigDecimal minLng, BigDecimal maxLng) {
+        validateBoundingBox(minLat, maxLat, minLng, maxLng);
+
+        // 본인 조회면 me 메서드로 위임
+        if (viewerId.equals(targetUserId)) {
+            return getMyLights(viewerId, minLat, maxLat, minLng, maxLng);
+        }
+
+        // 대상 사용자 존재 검증
+        if (!userRepository.existsById(targetUserId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        // 친구 여부에 따라 visibility 필터링
+        boolean isFriend = friendRepository.isFriend(viewerId, targetUserId);
+        List<Visibility> allowed = isFriend
+                ? List.of(Visibility.PUBLIC, Visibility.FRIENDS_ONLY)
+                : List.of(Visibility.PUBLIC);
+
+        return passportRepository.findLightsInBounds(
+                        targetUserId, minLat, maxLat, minLng, maxLng, allowed)
+                .stream()
+                .map(LightResponse::from)
+                .toList();
+    }
+
+    // ========== Bounding Box 검증 ==========
+    private void validateBoundingBox(BigDecimal minLat, BigDecimal maxLat,
+                                     BigDecimal minLng, BigDecimal maxLng) {
+        if (minLat.compareTo(maxLat) > 0 || minLng.compareTo(maxLng) > 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+    }
 
 }
