@@ -11,6 +11,7 @@ import com.kauniv.lightrip.global.enums.Category;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
+import com.kauniv.lightrip.global.enums.Visibility;
 
 
 public interface PassportRepository extends JpaRepository<Passport, Long> {
@@ -119,4 +120,20 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
         WHERE p.id IN :ids
         """)
     List<Passport> findAllByIdsForFeed(List<Long> ids);
+
+    // ========== 지도 불빛 조회 (Bounding Box + visibility 필터) ==========
+    @Query("""
+        SELECT DISTINCT p FROM Passport p
+        LEFT JOIN FETCH p.images
+        WHERE p.user.id = :targetUserId
+          AND p.latitude BETWEEN :minLat AND :maxLat
+          AND p.longitude BETWEEN :minLng AND :maxLng
+          AND p.visibility IN :visibilities
+        """)
+    List<Passport> findLightsInBounds(
+            Long targetUserId,
+            BigDecimal minLat, BigDecimal maxLat,
+            BigDecimal minLng, BigDecimal maxLng,
+            List<Visibility> visibilities
+    );
 }
