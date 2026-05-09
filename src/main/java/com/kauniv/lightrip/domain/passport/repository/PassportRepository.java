@@ -1,5 +1,5 @@
-// domain/passport/repository/PassportRepository.java
 package com.kauniv.lightrip.domain.passport.repository;
+
 import com.kauniv.lightrip.global.enums.District;
 import java.util.Optional;
 import com.kauniv.lightrip.domain.passport.entity.Passport;
@@ -13,24 +13,18 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
 import com.kauniv.lightrip.global.enums.Visibility;
 
-
 public interface PassportRepository extends JpaRepository<Passport, Long> {
 
-    // 중복 등록 방지 (uk_passport_user_location_date)
     boolean existsByUser_IdAndLatitudeAndLongitudeAndVisitedAt(
             Long userId, BigDecimal latitude, BigDecimal longitude, LocalDate visitedAt
     );
 
-    // 해당 구에 사용자 여권이 있는지 확인
     boolean existsByUser_IdAndDistrictCategory(Long userId, District districtCategory);
 
-    // 해당 구의 가장 최근 여권 조회 (삭제 시 대표 이미지 교체용)
     Optional<Passport> findFirstByUser_IdAndDistrictCategoryOrderByCreatedAtDesc(
             Long userId, District districtCategory
     );
 
-
-    // 사용자의 지역별 여권 수 조회
     @Query("""
         SELECT p.districtCategory, COUNT(p)
         FROM Passport p
@@ -40,7 +34,6 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
         """)
     List<Object[]> countByUserIdGroupByDistrict(Long userId);
 
-    // 장소별 여권 목록 (필터 + 커서, 첫 요청)
     @Query("""
         SELECT p FROM Passport p
         LEFT JOIN FETCH p.images
@@ -54,7 +47,6 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
                                         District districtCategory,
                                         Pageable pageable);
 
-    // 장소별 여권 목록 (필터 + 커서, 다음 페이지)
     @Query("""
         SELECT p FROM Passport p
         LEFT JOIN FETCH p.images
@@ -69,9 +61,9 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
                                               Category category,
                                               District districtCategory,
                                               Pageable pageable);
+
     long countByUser_Id(Long userId);
 
-    // ========== 피드 조회: 인기순 + 필터 + 커서 (정렬된 ID 리스트) ==========
     @Query(value = """
         SELECT p.passport_id
         FROM passport p
@@ -112,7 +104,6 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
             @Param("limit") int limit
     );
 
-    // ========== ID 리스트로 여권 + 이미지 + 작성자 fetch ==========
     @Query("""
         SELECT DISTINCT p FROM Passport p
         LEFT JOIN FETCH p.images
@@ -136,4 +127,15 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
             BigDecimal minLng, BigDecimal maxLng,
             List<Visibility> visibilities
     );
+
+    // 친구 여권 조회: visibility = PUBLIC인 여권만 반환
+    @Query("""
+        SELECT p FROM Passport p
+        LEFT JOIN FETCH p.images
+        WHERE p.user.id = :userId
+          AND p.visibility = com.kauniv.lightrip.global.enums.Visibility.PUBLIC
+        ORDER BY p.visitedAt DESC, p.id DESC
+        """)
+    List<Passport> findPublicPassportsByUserId(@Param("userId") Long userId,
+                                               Pageable pageable);
 }

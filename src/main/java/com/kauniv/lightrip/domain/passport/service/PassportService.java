@@ -3,6 +3,7 @@ package com.kauniv.lightrip.domain.passport.service;
 import com.kauniv.lightrip.domain.friend.repository.FriendRepository;
 import com.kauniv.lightrip.domain.passport.dto.request.PassportCreateRequest;
 import com.kauniv.lightrip.domain.passport.dto.request.PassportUpdateRequest;
+import com.kauniv.lightrip.domain.passport.dto.request.PassportVisibilityRequest;
 import com.kauniv.lightrip.domain.passport.dto.response.PassportResponse;
 import com.kauniv.lightrip.domain.passport.entity.DistrictCover;
 import com.kauniv.lightrip.domain.passport.entity.Passport;
@@ -41,6 +42,7 @@ import java.util.Objects;
 import java.util.Set;
 import com.kauniv.lightrip.domain.passport.dto.response.LightResponse;
 import com.kauniv.lightrip.global.enums.Visibility;
+
 
 @Service
 @RequiredArgsConstructor
@@ -95,9 +97,8 @@ public class PassportService {
 
         passportRepository.save(passport);
         passport.replaceImages(req.imageUrls());
-        passportRepository.flush(); // 이미지 ID 생성을 위해 flush
+        passportRepository.flush();
 
-        // DistrictCover 자동 생성 (해당 구에 첫 등록이면)
         createDistrictCoverIfFirst(user, passport);
 
         return PassportResponse.from(passport);
@@ -128,6 +129,23 @@ public class PassportService {
         );
 
         passport.replaceImages(req.imageUrls());
+
+        return PassportResponse.from(passport);
+    }
+
+    // ========== 공개 범위 단독 변경 ==========
+    @Transactional
+    public PassportResponse updateVisibility(Long userId, Long passportId,
+                                             PassportVisibilityRequest req) {
+        Passport passport = passportRepository.findById(passportId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
+
+        // 본인 여권만 공개 범위 변경 가능 (팀 여권도 작성자만)
+        if (!passport.isOwnedBy(userId)) {
+            throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
+        }
+
+        passport.updateVisibility(req.visibility());
 
         return PassportResponse.from(passport);
     }
@@ -180,16 +198,13 @@ public class PassportService {
     private void cleanupDistrictCover(Long userId, District district) {
         districtCoverRepository.findByUser_IdAndDistrictCategory(userId, district)
                 .ifPresent(cover -> {
-                    // 해당 구에 다른 여권이 남아있는지 확인
                     passportRepository.findFirstByUser_IdAndDistrictCategoryOrderByCreatedAtDesc(userId, district)
                             .ifPresentOrElse(
-                                    // 남은 여권 있으면 → 그 여권의 첫 이미지로 교체
                                     latestPassport -> {
                                         if (!latestPassport.getImages().isEmpty()) {
                                             cover.changeCoverImage(latestPassport.getImages().get(0));
                                         }
                                     },
-                                    // 남은 여권 없으면 → DistrictCover 삭제
                                     () -> districtCoverRepository.delete(cover)
                             );
                 });
@@ -243,17 +258,14 @@ public class PassportService {
 
     // ========== 내 기록 지역 조회 ==========
     public List<DistrictResponse> getMyDistricts(Long userId) {
-        // 1. 지역별 여권 수 조회
         List<Object[]> counts = passportRepository.countByUserIdGroupByDistrict(userId);
 
-        // 2. 사용자의 DistrictCover 전체 조회 → Map으로 변환
         Map<District, String> coverMap = districtCoverRepository.findAllByUser_Id(userId).stream()
                 .collect(Collectors.toMap(
                         DistrictCover::getDistrictCategory,
                         cover -> cover.getPassportImage().getImageUrl()
                 ));
 
-        // 3. 합치기
         return counts.stream()
                 .map(row -> {
                     District district = (District) row[0];
@@ -263,7 +275,6 @@ public class PassportService {
                 })
                 .toList();
     }
-
 
     // ========== 내 여권 목록 조회 (장소별, 커서 기반) ==========
     public CursorResponse<PassportListResponse> getMyPassports(Long userId,
@@ -302,30 +313,17 @@ public class PassportService {
 
     // ========== 릴스형 여권 피드 조회 ==========
     public FeedCursorResponse<FeedPassportResponse> getFeed(
-            Long userId,
-            Category category,
-            District district,
-            BigDecimal latitude,
-            BigDecimal longitude,
-            int radius,
-            Long cursor,
-            Long cursorScore,
-            int size
-    ) {
-        // 1. 위치 파라미터 검증
+            Long userId, Category category, District district,
+            BigDecimal latitude, BigDecimal longitude,
+            int radius, Long cursor, Long cursorScore, int size) {
+
         validateLocation(latitude, longitude);
 
-        // 2. 후보 여권 ID 조회 (정렬된 상태)
         List<Long> candidateIds = passportRepository.findFeedPassportIds(
                 userId,
                 category != null ? category.name() : null,
                 district != null ? district.name() : null,
-                latitude,
-                longitude,
-                radius,
-                cursor,
-                cursorScore,
-                size + 1
+                latitude, longitude, radius, cursor, cursorScore, size + 1
         );
 
         if (candidateIds.isEmpty()) {
@@ -337,10 +335,8 @@ public class PassportService {
             candidateIds = candidateIds.subList(0, size);
         }
 
-        // 3. 여권 엔티티 fetch join (N+1 방지)
         List<Passport> passports = passportRepository.findAllByIdsForFeed(candidateIds);
 
-        // 4. 정렬 순서 복원 (IN 쿼리는 순서 보장 X)
         Map<Long, Passport> passportMap = passports.stream()
                 .collect(Collectors.toMap(Passport::getId, p -> p));
         List<Passport> ordered = candidateIds.stream()
@@ -348,7 +344,6 @@ public class PassportService {
                 .filter(Objects::nonNull)
                 .toList();
 
-        // 5. 좋아요/스크랩/친구 일괄 조회
         Set<Long> likedIds = new HashSet<>(likeRepository.findLikedPassportIds(userId, candidateIds));
         Set<Long> scrappedIds = new HashSet<>(scrapRepository.findScrappedPassportIds(userId, candidateIds));
 
@@ -358,7 +353,6 @@ public class PassportService {
                 .toList();
         Set<Long> friendIds = new HashSet<>(friendRepository.findFriendUserIdsAmong(userId, writerIds));
 
-        // 6. 응답 구성
         List<FeedPassportResponse> content = ordered.stream()
                 .map(p -> {
                     BigDecimal distance = (latitude != null && longitude != null)
@@ -368,7 +362,6 @@ public class PassportService {
                 })
                 .toList();
 
-        // 7. nextCursor 추출
         Long nextCursor = null;
         Long nextCursorScore = null;
         if (hasNext && !content.isEmpty()) {
