@@ -1,10 +1,11 @@
 package com.kauniv.lightrip.domain.friend.controller;
 
-import com.kauniv.lightrip.domain.friend.dto.request.FriendRequestDto;
-import com.kauniv.lightrip.domain.friend.dto.request.FriendStatusUpdateDto;
+import com.kauniv.lightrip.domain.friend.dto.request.FriendRequest;
+import com.kauniv.lightrip.domain.friend.dto.request.FriendStatusUpdate;
 import com.kauniv.lightrip.domain.friend.dto.response.FriendPassportResponse;
-import com.kauniv.lightrip.domain.friend.dto.response.FriendResponseDto;
+import com.kauniv.lightrip.domain.friend.dto.response.FriendResponse;
 import com.kauniv.lightrip.domain.friend.service.FriendService;
+import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
 import com.kauniv.lightrip.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -31,11 +32,11 @@ public class FriendController {
 
     @Operation(summary = "친구 요청 보내기", description = "친구 코드로 상대방에게 친구 요청을 보냅니다.")
     @PostMapping("/request")
-    public ResponseEntity<ApiResponse<FriendResponseDto>> sendRequest(
+    public ResponseEntity<ApiResponse<FriendResponse>> sendRequest(
             @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody FriendRequestDto dto) {
+            @Valid @RequestBody FriendRequest dto) {
 
-        FriendResponseDto response = friendService.sendRequest(userId, dto);
+        FriendResponse response = friendService.sendRequest(userId, dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(response));
     }
 
@@ -44,9 +45,9 @@ public class FriendController {
     public ResponseEntity<?> handleRequest(
             @AuthenticationPrincipal Long userId,
             @Parameter(description = "Friend 테이블의 PK (friendshipId)") @PathVariable Long friendId,
-            @Valid @RequestBody FriendStatusUpdateDto dto) {
+            @Valid @RequestBody FriendStatusUpdate dto) {
 
-        FriendResponseDto response = friendService.handleRequest(userId, friendId, dto);
+        FriendResponse response = friendService.handleRequest(userId, friendId, dto);
 
         if (response == null) {
             return ResponseEntity.noContent().build();
@@ -66,28 +67,28 @@ public class FriendController {
 
     @Operation(summary = "내 친구 목록 조회", description = "수락된 친구 목록을 전체 조회합니다.")
     @GetMapping
-    public ApiResponse<List<FriendResponseDto>> getFriends(
+    public ApiResponse<List<FriendResponse>> getFriends(
             @AuthenticationPrincipal Long userId) {
 
-        List<FriendResponseDto> response = friendService.getFriends(userId);
+        List<FriendResponse> response = friendService.getFriends(userId);
         return ApiResponse.success(response);
     }
 
     @Operation(summary = "받은 친구 요청 조회", description = "아직 수락하지 않은 PENDING 상태의 친구 요청 목록을 조회합니다.")
     @GetMapping("/pending")
-    public ApiResponse<List<FriendResponseDto>> getPendingRequests(
+    public ApiResponse<List<FriendResponse>> getPendingRequests(
             @AuthenticationPrincipal Long userId) {
 
-        List<FriendResponseDto> response = friendService.getPendingRequests(userId);
+        List<FriendResponse> response = friendService.getPendingRequests(userId);
         return ApiResponse.success(response);
     }
 
     @Operation(summary = "친구 코드로 유저 검색", description = "친구 코드로 유저를 검색합니다. 친구 요청 전 상대방 확인용입니다.")
     @GetMapping("/search")
-    public ApiResponse<FriendResponseDto> searchByFriendCode(
+    public ApiResponse<FriendResponse> searchByFriendCode(
             @Parameter(description = "검색할 친구 코드 (8자리 대문자)") @RequestParam String code) {
 
-        FriendResponseDto response = friendService.searchByFriendCode(code);
+        FriendResponse response = friendService.searchByFriendCode(code);
         return ApiResponse.success(response);
     }
 
@@ -100,6 +101,16 @@ public class FriendController {
 
         List<FriendPassportResponse> response =
                 friendService.getFriendPassports(userId, friendId, pageable);
+        return ApiResponse.success(response);
+    }
+
+    @Operation(summary = "친구 지도 조회", description = "친구의 공개(PUBLIC) 여권 기준으로 방문한 지역 목록을 조회합니다. ACCEPTED 상태의 친구만 조회 가능합니다.")
+    @GetMapping("/{friendId}/map")
+    public ApiResponse<List<DistrictResponse>> getFriendDistricts(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "조회할 친구의 userId") @PathVariable Long friendId) {
+
+        List<DistrictResponse> response = friendService.getFriendDistricts(userId, friendId);
         return ApiResponse.success(response);
     }
 }

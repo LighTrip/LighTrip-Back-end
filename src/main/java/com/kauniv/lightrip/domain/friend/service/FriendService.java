@@ -1,23 +1,29 @@
 package com.kauniv.lightrip.domain.friend.service;
 
 import com.kauniv.lightrip.domain.friend.dto.request.FriendAction;
-import com.kauniv.lightrip.domain.friend.dto.request.FriendRequestDto;
-import com.kauniv.lightrip.domain.friend.dto.request.FriendStatusUpdateDto;
+import com.kauniv.lightrip.domain.friend.dto.request.FriendRequest;
+import com.kauniv.lightrip.domain.friend.dto.request.FriendStatusUpdate;
 import com.kauniv.lightrip.domain.friend.dto.response.FriendPassportResponse;
-import com.kauniv.lightrip.domain.friend.dto.response.FriendResponseDto;
+import com.kauniv.lightrip.domain.friend.dto.response.FriendResponse;
 import com.kauniv.lightrip.domain.friend.entity.Friend;
 import com.kauniv.lightrip.domain.friend.repository.FriendRepository;
+import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
+import com.kauniv.lightrip.domain.passport.entity.DistrictCover;
+import com.kauniv.lightrip.domain.passport.repository.DistrictCoverRepository;
 import com.kauniv.lightrip.domain.passport.repository.PassportRepository;
 import com.kauniv.lightrip.domain.user.entity.User;
 import com.kauniv.lightrip.domain.user.repository.UserRepository;
 import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
+import com.kauniv.lightrip.global.enums.District;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -27,9 +33,10 @@ public class FriendService {
     private final FriendRepository friendRepository;
     private final UserRepository userRepository;
     private final PassportRepository passportRepository;
+    private final DistrictCoverRepository districtCoverRepository;
 
     @Transactional
-    public FriendResponseDto sendRequest(Long requesterId, FriendRequestDto dto) {
+    public FriendResponse sendRequest(Long requesterId, FriendRequest dto) {
         User requester = userRepository.findById(requesterId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
@@ -51,11 +58,11 @@ public class FriendService {
                 .build();
 
         friendRepository.save(friend);
-        return FriendResponseDto.from(friend, receiver);
+        return FriendResponse.from(friend, receiver);
     }
 
     @Transactional
-    public FriendResponseDto handleRequest(Long userId, Long friendId, FriendStatusUpdateDto dto) {
+    public FriendResponse handleRequest(Long userId, Long friendId, FriendStatusUpdate dto) {
         Friend friend = friendRepository.findById(friendId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.FRIEND_NOT_FOUND));
 
@@ -65,7 +72,7 @@ public class FriendService {
 
         if (dto.action() == FriendAction.ACCEPT) {
             friend.accept();
-            return FriendResponseDto.from(friend, friend.getRequester());
+            return FriendResponse.from(friend, friend.getRequester());
         } else {
             friendRepository.delete(friend);
             return null;
@@ -85,7 +92,7 @@ public class FriendService {
         friendRepository.delete(friend);
     }
 
-    public List<FriendResponseDto> getFriends(Long userId) {
+    public List<FriendResponse> getFriends(Long userId) {
         List<Friend> friends = friendRepository.findAllFriends(userId);
 
         return friends.stream()
@@ -93,24 +100,24 @@ public class FriendService {
                     User target = friend.getRequester().getId().equals(userId)
                             ? friend.getReceiver()
                             : friend.getRequester();
-                    return FriendResponseDto.from(friend, target);
+                    return FriendResponse.from(friend, target);
                 })
                 .toList();
     }
 
-    public List<FriendResponseDto> getPendingRequests(Long userId) {
+    public List<FriendResponse> getPendingRequests(Long userId) {
         List<Friend> pendings = friendRepository.findPendingRequests(userId);
 
         return pendings.stream()
-                .map(friend -> FriendResponseDto.from(friend, friend.getRequester()))
+                .map(friend -> FriendResponse.from(friend, friend.getRequester()))
                 .toList();
     }
 
-    public FriendResponseDto searchByFriendCode(String friendCode) {
+    public FriendResponse searchByFriendCode(String friendCode) {
         User user = userRepository.findByFriendCode(friendCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        return new FriendResponseDto(
+        return new FriendResponse(
                 null,
                 user.getId(),
                 user.getNickname(),
@@ -125,18 +132,45 @@ public class FriendService {
     public List<FriendPassportResponse> getFriendPassports(Long currentUserId,
                                                            Long friendId,
                                                            Pageable pageable) {
-        // 친구 관계 확인: isFriend()가 ACCEPTED 양방향 체크를 이미 수행
         if (!friendRepository.isFriend(currentUserId, friendId)) {
             throw new BusinessException(ErrorCode.FRIEND_NOT_MEMBER);
         }
 
-        // 대상 유저 존재 확인
         userRepository.findById(friendId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         return passportRepository.findPublicPassportsByUserId(friendId, pageable)
                 .stream()
                 .map(FriendPassportResponse::from)
+                .toList();
+    }
+
+    // 친구 지도 조회 — PUBLIC 여권 기준 district 목록 반환
+    public List<DistrictResponse> getFriendDistricts(Long currentUserId, Long friendId) {
+        if (!friendRepository.isFriend(currentUserId, friendId)) {
+            throw new BusinessException(ErrorCode.FRIEND_NOT_MEMBER);
+        }
+
+        userRepository.findById(friendId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        // PUBLIC 여권 기준 district별 여권 수 조회
+        List<Object[]> counts = passportRepository.countPublicByUserIdGroupByDistrict(friendId);
+
+        // 친구의 DistrictCover 조회 → 썸네일 매핑
+        Map<District, String> coverMap = districtCoverRepository.findAllByUser_Id(friendId).stream()
+                .collect(Collectors.toMap(
+                        DistrictCover::getDistrictCategory,
+                        cover -> cover.getPassportImage().getImageUrl()
+                ));
+
+        return counts.stream()
+                .map(row -> {
+                    District district = (District) row[0];
+                    Long count = (Long) row[1];
+                    String thumbnailUrl = coverMap.get(district);
+                    return DistrictResponse.of(district, count, thumbnailUrl);
+                })
                 .toList();
     }
 }
