@@ -5,7 +5,7 @@ import com.kauniv.lightrip.domain.user.entity.User;
 
 import java.time.LocalDateTime;
 
-public record FriendResponseDto(
+public record FriendResponse(
         Long friendId,
         Long userId,
         String nickname,
@@ -14,8 +14,8 @@ public record FriendResponseDto(
         String status,
         LocalDateTime createdAt
 ) {
-    public static FriendResponseDto from(Friend friend, User target) {
-        return new FriendResponseDto(
+    public static FriendResponse from(Friend friend, User target) {
+        return new FriendResponse(
                 friend.getId(),
                 target.getId(),
                 target.getNickname(),
