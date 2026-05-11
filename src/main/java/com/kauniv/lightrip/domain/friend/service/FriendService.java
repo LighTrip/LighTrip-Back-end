@@ -11,6 +11,7 @@ import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
 import com.kauniv.lightrip.domain.passport.entity.DistrictCover;
 import com.kauniv.lightrip.domain.passport.repository.DistrictCoverRepository;
 import com.kauniv.lightrip.domain.passport.repository.PassportRepository;
+import com.kauniv.lightrip.domain.scrap.repository.ScrapRepository;
 import com.kauniv.lightrip.domain.user.entity.User;
 import com.kauniv.lightrip.domain.user.repository.UserRepository;
 import com.kauniv.lightrip.global.common.exception.BusinessException;
@@ -21,8 +22,10 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +37,7 @@ public class FriendService {
     private final UserRepository userRepository;
     private final PassportRepository passportRepository;
     private final DistrictCoverRepository districtCoverRepository;
+    private final ScrapRepository scrapRepository;
 
     @Transactional
     public FriendResponse sendRequest(Long requesterId, FriendRequest dto) {
@@ -154,10 +158,8 @@ public class FriendService {
         userRepository.findById(friendId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // PUBLIC 여권 기준 district별 여권 수 조회
         List<Object[]> counts = passportRepository.countPublicByUserIdGroupByDistrict(friendId);
 
-        // 친구의 DistrictCover 조회 → 썸네일 매핑
         Map<District, String> coverMap = districtCoverRepository.findAllByUser_Id(friendId).stream()
                 .collect(Collectors.toMap(
                         DistrictCover::getDistrictCategory,
@@ -171,6 +173,53 @@ public class FriendService {
                     String thumbnailUrl = coverMap.get(district);
                     return DistrictResponse.of(district, count, thumbnailUrl);
                 })
+                .toList();
+    }
+
+    // 추천 친구 조회 — 내가 스크랩한 여권 작성자 중 아직 친구가 아닌 유저 최대 4명 랜덤 반환
+    public List<FriendResponse> getRecommendedFriends(Long userId) {
+        // 1. 내가 스크랩한 여권의 작성자 ID 목록 (본인 제외)
+        List<Long> candidateIds = scrapRepository.findScrapedPassportOwnerIds(userId);
+
+        if (candidateIds.isEmpty()) {
+            return List.of();
+        }
+
+        // 2. 이미 친구이거나 요청 중인 유저 제외
+        Set<Long> existingFriendIds = friendRepository.findAllFriends(userId).stream()
+                .map(f -> f.getRequester().getId().equals(userId)
+                        ? f.getReceiver().getId()
+                        : f.getRequester().getId())
+                .collect(Collectors.toSet());
+
+        // PENDING 상태도 제외
+        Set<Long> pendingIds = friendRepository.findPendingRequests(userId).stream()
+                .map(f -> f.getRequester().getId())
+                .collect(Collectors.toSet());
+
+        List<Long> filteredIds = candidateIds.stream()
+                .filter(id -> !existingFriendIds.contains(id) && !pendingIds.contains(id))
+                .collect(Collectors.toList());
+
+        // 3. 랜덤 셔플 후 최대 4명 추출
+        Collections.shuffle(filteredIds);
+        List<Long> selectedIds = filteredIds.stream().limit(4).toList();
+
+        if (selectedIds.isEmpty()) {
+            return List.of();
+        }
+
+        // 4. User 정보 조회 후 응답 변환
+        return userRepository.findAllById(selectedIds).stream()
+                .map(user -> new FriendResponse(
+                        null,
+                        user.getId(),
+                        user.getNickname(),
+                        user.getProfileImg(),
+                        user.getFriendCode(),
+                        null,
+                        null
+                ))
                 .toList();
     }
 }
