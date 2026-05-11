@@ -46,4 +46,13 @@ public interface ScrapRepository extends JpaRepository<Scrap, Long> {
             """)
     List<Long> findScrappedPassportIds(@Param("userId") Long userId,
                                        @Param("passportIds") List<Long> passportIds);
+
+    // 내가 스크랩한 여권의 작성자 userId 목록 조회 (본인 제외, 중복 제거)
+    @Query("""
+    SELECT DISTINCT s.passport.user.id
+    FROM Scrap s
+    WHERE s.user.id = :userId
+      AND s.passport.user.id <> :userId
+    """)
+    List<Long> findScrapedPassportOwnerIds(@Param("userId") Long userId);
 }
