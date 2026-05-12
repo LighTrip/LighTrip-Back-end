@@ -52,7 +52,11 @@ public enum ErrorCode {
     FRIEND_ALREADY_REQUESTED(HttpStatus.CONFLICT, "F002", "이미 친구 요청을 보냈거나 친구 관계입니다."),
     FRIEND_SELF_REQUEST(HttpStatus.BAD_REQUEST, "F003", "자기 자신에게 친구 요청을 보낼 수 없습니다."),
     FRIEND_NOT_RECEIVER(HttpStatus.FORBIDDEN, "F004", "친구 요청을 수락/거절할 권한이 없습니다."),
-    FRIEND_NOT_MEMBER(HttpStatus.FORBIDDEN, "F005", "해당 친구 관계의 당사자가 아닙니다.");
+    FRIEND_NOT_MEMBER(HttpStatus.FORBIDDEN, "F005", "해당 친구 관계의 당사자가 아닙니다."),
+
+    // ===== Ranking =====
+    RANKING_NOT_FOUND(HttpStatus.NOT_FOUND, "R001", "랭킹 정보가 존재하지 않습니다."),
+    RANKING_CALCULATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "R002", "랭킹 산정 중 오류가 발생했습니다.");
 
     private final HttpStatus status;
     private final String code;
