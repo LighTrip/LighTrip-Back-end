@@ -29,15 +29,15 @@ public class Ranking {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @Column(name = "like_count", nullable = false)
-    private Integer likeCount;
+    @Column(name = "score", nullable = false)
+    private Integer score;  // 주간 가중치 합산 점수: (좋아요 × 2) + (스크랩 × 3)
 
     @Enumerated(EnumType.STRING)
     @Column(name = "district", length = 50)
-    private District district;
+    private District district;  // NULL이면 전체 랭킹, 값 있으면 구별 랭킹
 
-    @Column(name = "rank", nullable = false)
-    private Integer rank;
+    @Column(name = "ranking_position", nullable = false)
+    private Integer rankingPosition;
 
     @Column(name = "week_start_at", nullable = false)
     private LocalDateTime weekStartAt;
