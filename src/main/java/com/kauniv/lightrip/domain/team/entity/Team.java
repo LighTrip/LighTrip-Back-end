@@ -27,8 +27,8 @@ public class Team {
     @Column(name = "team_name", length = 50, nullable = false)
     private String teamName;
 
-    @Column(name = "invite_code", length = 50, unique = true, nullable = false)
-    private String inviteCode;
+    @Column(name = "team_code", length = 50, unique = true, nullable = false)
+    private String teamCode;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
