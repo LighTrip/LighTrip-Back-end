@@ -113,4 +113,13 @@ public class FriendController {
         List<DistrictResponse> response = friendService.getFriendDistricts(userId, friendId);
         return ApiResponse.success(response);
     }
+
+    @Operation(summary = "추천 친구 목록 조회", description = "내가 스크랩한 여권의 작성자 중 아직 친구가 아닌 유저를 최대 4명 랜덤으로 추천합니다.")
+    @GetMapping("/recommendations")
+    public ApiResponse<List<FriendResponse>> getRecommendedFriends(
+            @AuthenticationPrincipal Long userId) {
+
+        List<FriendResponse> response = friendService.getRecommendedFriends(userId);
+        return ApiResponse.success(response);
+    }
 }
