@@ -38,7 +38,10 @@ public enum ErrorCode {
     // ===== Team =====
     TEAM_NOT_FOUND(HttpStatus.NOT_FOUND, "T001", "존재하지 않는 팀입니다."),
     TEAM_ALREADY_JOINED(HttpStatus.CONFLICT, "T002", "이미 가입된 팀이 있습니다."),
-    TEAM_INVALID_INVITE_CODE(HttpStatus.BAD_REQUEST, "T003", "유효하지 않은 초대 코드입니다."),
+    TEAM_INVALID_CODE(HttpStatus.BAD_REQUEST, "T003", "유효하지 않은 팀 코드입니다."),
+    TEAM_NOT_MEMBER(HttpStatus.FORBIDDEN, "T004", "팀 멤버가 아닙니다."),
+    TEAM_LEADER_CANNOT_LEAVE(HttpStatus.BAD_REQUEST, "T005", "팀장은 팀을 탈퇴할 수 없습니다."),
+    TEAM_FULL(HttpStatus.CONFLICT, "T006", "팀 인원이 가득 찼습니다."),
 
     // ===== Map =====
     REVERSE_GEOCODE_FAILED(HttpStatus.BAD_GATEWAY, "M001", "역지오코딩에 실패했습니다."),
