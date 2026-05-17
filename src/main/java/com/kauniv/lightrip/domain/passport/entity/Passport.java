@@ -50,6 +50,11 @@ public class Passport {
     @Builder.Default
     private List<PassportImage> images = new ArrayList<>();
 
+    @OneToMany(mappedBy = "passport", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("createdAt ASC")
+    @Builder.Default
+    private List<Stamp> stamps = new ArrayList<>();
+
     @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
 

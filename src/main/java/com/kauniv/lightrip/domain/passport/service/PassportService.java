@@ -8,6 +8,7 @@ import com.kauniv.lightrip.domain.passport.dto.response.PassportResponse;
 import com.kauniv.lightrip.domain.passport.entity.DistrictCover;
 import com.kauniv.lightrip.domain.passport.entity.Passport;
 import com.kauniv.lightrip.domain.passport.entity.PassportImage;
+import com.kauniv.lightrip.domain.passport.entity.Stamp;
 import com.kauniv.lightrip.domain.passport.repository.DistrictCoverRepository;
 import com.kauniv.lightrip.domain.passport.repository.PassportRepository;
 import com.kauniv.lightrip.domain.scrap.repository.ScrapRepository;
@@ -19,8 +20,10 @@ import com.kauniv.lightrip.domain.user.repository.UserRepository;
 import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import com.kauniv.lightrip.global.enums.District;
+import com.kauniv.lightrip.global.s3.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -58,6 +61,10 @@ public class PassportService {
     private final FriendRepository friendRepository;
     private final DistrictCoverRepository districtCoverRepository;
     private final LikeRepository likeRepository;
+    private final S3Service s3Service;
+
+    @Value("${app.stamp.base-url}")
+    private String stampBaseUrl;
 
     // ========== 등록 ==========
     @Transactional
@@ -102,6 +109,7 @@ public class PassportService {
 
         passportRepository.save(passport);
         passport.replaceImages(req.imageUrls());
+        grantStamp(passport);
         passportRepository.flush();
 
         createDistrictCoverIfFirst(user, passport);
@@ -123,9 +131,20 @@ public class PassportService {
         Passport passport = passportRepository.findById(passportId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
         validateUpdatePermission(passport, userId);
+
+        List<String> oldUrls = passport.getImages().stream()
+                .map(PassportImage::getImageUrl)
+                .toList();
+
         passport.update(req.content(), req.spaceName(), req.category(),
                 req.districtCategory(), req.visibility(), req.musicTitle(), req.musicArtist());
         passport.replaceImages(req.imageUrls());
+
+        Set<String> newUrls = new HashSet<>(req.imageUrls());
+        oldUrls.stream()
+                .filter(url -> !newUrls.contains(url))
+                .forEach(s3Service::deleteFileByUrl);
+
         return PassportResponse.from(passport);
     }
 
@@ -150,11 +169,18 @@ public class PassportService {
         if (!passport.isOwnedBy(userId)) {
             throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
         }
+
+        List<String> imageUrls = passport.getImages().stream()
+                .map(PassportImage::getImageUrl)
+                .toList();
+
         District district = passport.getDistrictCategory();
         likeRepository.deleteAllByPassportId(passportId);
         scrapRepository.deleteAllByPassportId(passportId);
         passportRepository.delete(passport);
         passportRepository.flush();
+
+        imageUrls.forEach(s3Service::deleteFileByUrl);
         cleanupDistrictCover(userId, district);
     }
 
@@ -164,6 +190,17 @@ public class PassportService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
         validateReadPermission(passport, userId);
         return passport;
+    }
+
+    // ========== 카테고리 도장 자동 부여 ==========
+    private void grantStamp(Passport passport) {
+        Category category = passport.getCategory();
+        Stamp stamp = Stamp.builder()
+                .passport(passport)
+                .category(category)
+                .imageUrl(stampBaseUrl + "/" + category.name() + ".png")
+                .build();
+        passport.getStamps().add(stamp);
     }
 
     // ========== DistrictCover 자동 생성 ==========
