@@ -38,3 +38,10 @@ out/
 
 ### .env files ###
 .env
+
+
+# Claude 관련 임시 폴더 및 파일 무시
+.claude/
+claude.md
+.claude.md
+*.claude.md
