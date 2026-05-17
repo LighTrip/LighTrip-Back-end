@@ -55,4 +55,11 @@ public class S3Service {
                 .build();
         s3Client.deleteObject(deleteRequest);
     }
+
+    // CloudFront URL로 S3 파일 삭제 (외부 URL이면 무시)
+    public void deleteFileByUrl(String imageUrl) {
+        String prefix = "https://" + cloudfrontDomain + "/";
+        if (imageUrl == null || !imageUrl.startsWith(prefix)) return;
+        deleteFile(imageUrl.substring(prefix.length()));
+    }
 }

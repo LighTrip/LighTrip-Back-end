@@ -20,6 +20,7 @@ import com.kauniv.lightrip.domain.user.repository.UserRepository;
 import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import com.kauniv.lightrip.global.enums.District;
+import com.kauniv.lightrip.global.s3.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -60,6 +61,7 @@ public class PassportService {
     private final FriendRepository friendRepository;
     private final DistrictCoverRepository districtCoverRepository;
     private final LikeRepository likeRepository;
+    private final S3Service s3Service;
 
     @Value("${app.stamp.base-url}")
     private String stampBaseUrl;
@@ -129,9 +131,20 @@ public class PassportService {
         Passport passport = passportRepository.findById(passportId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
         validateUpdatePermission(passport, userId);
+
+        List<String> oldUrls = passport.getImages().stream()
+                .map(PassportImage::getImageUrl)
+                .toList();
+
         passport.update(req.content(), req.spaceName(), req.category(),
                 req.districtCategory(), req.visibility(), req.musicTitle(), req.musicArtist());
         passport.replaceImages(req.imageUrls());
+
+        Set<String> newUrls = new HashSet<>(req.imageUrls());
+        oldUrls.stream()
+                .filter(url -> !newUrls.contains(url))
+                .forEach(s3Service::deleteFileByUrl);
+
         return PassportResponse.from(passport);
     }
 
@@ -156,11 +169,18 @@ public class PassportService {
         if (!passport.isOwnedBy(userId)) {
             throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
         }
+
+        List<String> imageUrls = passport.getImages().stream()
+                .map(PassportImage::getImageUrl)
+                .toList();
+
         District district = passport.getDistrictCategory();
         likeRepository.deleteAllByPassportId(passportId);
         scrapRepository.deleteAllByPassportId(passportId);
         passportRepository.delete(passport);
         passportRepository.flush();
+
+        imageUrls.forEach(s3Service::deleteFileByUrl);
         cleanupDistrictCover(userId, district);
     }
 
