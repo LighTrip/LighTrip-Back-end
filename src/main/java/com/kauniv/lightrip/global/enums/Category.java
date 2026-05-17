@@ -9,13 +9,11 @@ public enum Category {
 
     CAFE("카페"),
     RESTAURANT("식당"),
-    BAR("술집/바"),
-    TOURIST("관광지"),
-    NATURE("자연/공원"),
-    CULTURE("문화/예술"),
-    ACTIVITY("액티비티"),
-    ACCOMMODATION("숙소"),
+    BAR("술집"),
+    CULTURE("문화"),
+    ACTIVITY("운동"),
     SHOPPING("쇼핑"),
+    NATURE("공원"),
     ETC("기타");
 
     private final String displayName;

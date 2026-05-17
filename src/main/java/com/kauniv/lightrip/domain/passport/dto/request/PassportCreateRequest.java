@@ -19,9 +19,17 @@ public record PassportCreateRequest(
         @Size(min = 1, max = 5, message = "이미지는 1장 이상 5장 이하여야 합니다.")
         List<@NotBlank(message = "이미지 URL은 비어있을 수 없습니다.") String> imageUrls,
 
-        @Schema(description = "기록 내용", example = "오늘 다녀온 카페, 분위기 너무 좋았다.")
+        @Schema(description = "기록 내용 (사용자가 수정한 최종본)", example = "오늘 다녀온 카페, 분위기 너무 좋았다.")
         @NotBlank(message = "기록 내용은 필수입니다.")
         String content,
+
+        @Schema(description = "AI가 생성한 초안 원본 (학습 데이터용)", example = "창가에 앉아 커피 향을...")
+        String draft,
+        // > AI 초안 API 호출 결과. 사용자가 수정 전 원본. nullable (AI 미사용 시).
+
+        @Schema(description = "AI가 분류한 카테고리 초기값 (학습 데이터용)", example = "CAFE")
+        Category aiCategory,
+        // > AI 카테고리 초기값. 사용자가 category를 바꿔도 보존. nullable.
 
         @Schema(description = "위도", example = "37.5665")
         @NotNull(message = "위도는 필수입니다.")
@@ -49,7 +57,7 @@ public record PassportCreateRequest(
         @Size(max = 50)
         String spaceName,
 
-        @Schema(description = "카테고리", example = "CAFE")
+        @Schema(description = "카테고리 (사용자 최종 선택값)", example = "CAFE")
         @NotNull(message = "카테고리는 필수입니다.")
         Category category,
 
@@ -71,7 +79,7 @@ public record PassportCreateRequest(
         @Schema(description = "팀 ID (개인 여권이면 null)")
         Long teamId
 ) {
-    public Visibility visibilityOrDefault() {
-        return visibility == null ? Visibility.PUBLIC : visibility;
-    }
+        public Visibility visibilityOrDefault() {
+                return visibility == null ? Visibility.PUBLIC : visibility;
+        }
 }
