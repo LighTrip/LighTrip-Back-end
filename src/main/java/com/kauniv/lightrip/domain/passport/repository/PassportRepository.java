@@ -149,4 +149,13 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
                                                Pageable pageable);
 
     List<Passport> findAllByTeam_Id(Long teamId);
+
+    // 여러 유저의 도장 수를 한번에 조회 (N+1 방지)
+    @Query("""
+    SELECT p.user.id, COUNT(p)
+    FROM Passport p
+    WHERE p.user.id IN :userIds
+    GROUP BY p.user.id
+    """)
+    List<Object[]> countByUserIds(@Param("userIds") List<Long> userIds);
 }

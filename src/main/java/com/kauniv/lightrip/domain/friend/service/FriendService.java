@@ -99,12 +99,39 @@ public class FriendService {
     public List<FriendResponse> getFriends(Long userId) {
         List<Friend> friends = friendRepository.findAllFriends(userId);
 
+        if (friends.isEmpty()) {
+            return List.of();
+        }
+
+        // 친구 유저 ID 목록 추출
+        List<Long> targetIds = friends.stream()
+                .map(f -> f.getRequester().getId().equals(userId)
+                        ? f.getReceiver().getId()
+                        : f.getRequester().getId())
+                .toList();
+
+        // 도장 수 일괄 조회
+        Map<Long, Long> passportCountMap = passportRepository.countByUserIds(targetIds).stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                ));
+
         return friends.stream()
                 .map(friend -> {
                     User target = friend.getRequester().getId().equals(userId)
                             ? friend.getReceiver()
                             : friend.getRequester();
-                    return FriendResponse.from(friend, target);
+
+                    Long passportCount = passportCountMap.getOrDefault(target.getId(), 0L);
+
+                    // 공통 친구 목록 조회
+                    List<FriendResponse.MutualFriendInfo> mutualFriends =
+                            friendRepository.findMutualFriends(userId, target.getId()).stream()
+                                    .map(FriendResponse.MutualFriendInfo::from)
+                                    .toList();
+
+                    return FriendResponse.from(friend, target, passportCount, mutualFriends);
                 })
                 .toList();
     }
@@ -128,11 +155,12 @@ public class FriendService {
                 user.getProfileImg(),
                 user.getFriendCode(),
                 null,
+                null,
+                null,
                 null
         );
     }
 
-    // 친구 여권 조회 — ACCEPTED 친구 관계 확인 후 PUBLIC 여권만 반환
     public List<FriendPassportResponse> getFriendPassports(Long currentUserId,
                                                            Long friendId,
                                                            Pageable pageable) {
@@ -149,7 +177,6 @@ public class FriendService {
                 .toList();
     }
 
-    // 친구 지도 조회 — PUBLIC 여권 기준 district 목록 반환
     public List<DistrictResponse> getFriendDistricts(Long currentUserId, Long friendId) {
         if (!friendRepository.isFriend(currentUserId, friendId)) {
             throw new BusinessException(ErrorCode.FRIEND_NOT_MEMBER);
@@ -176,23 +203,19 @@ public class FriendService {
                 .toList();
     }
 
-    // 추천 친구 조회 — 내가 스크랩한 여권 작성자 중 아직 친구가 아닌 유저 최대 4명 랜덤 반환
     public List<FriendResponse> getRecommendedFriends(Long userId) {
-        // 1. 내가 스크랩한 여권의 작성자 ID 목록 (본인 제외)
         List<Long> candidateIds = scrapRepository.findScrapedPassportOwnerIds(userId);
 
         if (candidateIds.isEmpty()) {
             return List.of();
         }
 
-        // 2. 이미 친구이거나 요청 중인 유저 제외
         Set<Long> existingFriendIds = friendRepository.findAllFriends(userId).stream()
                 .map(f -> f.getRequester().getId().equals(userId)
                         ? f.getReceiver().getId()
                         : f.getRequester().getId())
                 .collect(Collectors.toSet());
 
-        // PENDING 상태도 제외
         Set<Long> pendingIds = friendRepository.findPendingRequests(userId).stream()
                 .map(f -> f.getRequester().getId())
                 .collect(Collectors.toSet());
@@ -201,7 +224,6 @@ public class FriendService {
                 .filter(id -> !existingFriendIds.contains(id) && !pendingIds.contains(id))
                 .collect(Collectors.toList());
 
-        // 3. 랜덤 셔플 후 최대 4명 추출
         Collections.shuffle(filteredIds);
         List<Long> selectedIds = filteredIds.stream().limit(4).toList();
 
@@ -209,17 +231,25 @@ public class FriendService {
             return List.of();
         }
 
-        // 4. User 정보 조회 후 응답 변환
+        // 도장 수 일괄 조회
+        Map<Long, Long> passportCountMap = passportRepository.countByUserIds(selectedIds).stream()
+                .collect(Collectors.toMap(
+                        row -> (Long) row[0],
+                        row -> (Long) row[1]
+                ));
+
         return userRepository.findAllById(selectedIds).stream()
-                .map(user -> new FriendResponse(
-                        null,
-                        user.getId(),
-                        user.getNickname(),
-                        user.getProfileImg(),
-                        user.getFriendCode(),
-                        null,
-                        null
-                ))
+                .map(user -> {
+                    Long passportCount = passportCountMap.getOrDefault(user.getId(), 0L);
+
+                    // 공통 친구 목록 조회
+                    List<FriendResponse.MutualFriendInfo> mutualFriends =
+                            friendRepository.findMutualFriends(userId, user.getId()).stream()
+                                    .map(FriendResponse.MutualFriendInfo::from)
+                                    .toList();
+
+                    return FriendResponse.ofUser(user, passportCount, mutualFriends);
+                })
                 .toList();
     }
 }

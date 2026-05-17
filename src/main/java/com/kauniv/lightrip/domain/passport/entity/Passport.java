@@ -6,11 +6,7 @@ import com.kauniv.lightrip.global.enums.Category;
 import com.kauniv.lightrip.global.enums.District;
 import com.kauniv.lightrip.global.enums.Visibility;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -61,6 +57,18 @@ public class Passport {
 
     @Column(name = "content", columnDefinition = "TEXT", nullable = false)
     private String content;
+
+    @Column(name = "draft", columnDefinition = "TEXT")
+    private String draft;
+    // > AI가 생성한 블로그 초안 원본.
+    // > 사용자가 content를 수정해도 초안은 보존 → 향후 학습 데이터셋으로 활용.
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "ai_category", length = 20)
+    private Category aiCategory;
+    // > AI가 분류한 카테고리 초기값.
+    // > 사용자가 category를 바꿔도 ai_category는 보존.
+    // > category != ai_category 케이스 분석으로 모델 개선에 활용.
 
     @Column(name = "latitude", precision = 10, scale = 7, nullable = false)
     private BigDecimal latitude;
@@ -114,14 +122,9 @@ public class Passport {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-
-    public void update(String content,
-                       String spaceName,
-                       Category category,
-                       District districtCategory,
-                       Visibility visibility,
-                       String musicTitle,
-                       String musicArtist) {
+    public void update(String content, String spaceName, Category category,
+                       District districtCategory, Visibility visibility,
+                       String musicTitle, String musicArtist) {
         this.content = content;
         this.spaceName = spaceName;
         this.category = category;
@@ -148,37 +151,16 @@ public class Passport {
         this.visibility = visibility;
     }
 
-    /**
-     * 해당 사용자가 이 여권의 작성자인지 확인
-     */
     public boolean isOwnedBy(Long userId) {
         return this.user.getId().equals(userId);
     }
 
-    /**
-     * 팀 모드 여권 여부
-     */
     public boolean isTeamPassport() {
         return this.team != null;
     }
 
-    // ============================================================
-    // 좋아요 / 스크랩 카운트
-    // ============================================================
-
-    public void increaseLikeCount() {
-        this.likeCount++;
-    }
-
-    public void decreaseLikeCount() {
-        if (this.likeCount > 0) this.likeCount--;
-    }
-
-    public void increaseScrapCount() {
-        this.scrapCount++;
-    }
-
-    public void decreaseScrapCount() {
-        if (this.scrapCount > 0) this.scrapCount--;
-    }
+    public void increaseLikeCount() { this.likeCount++; }
+    public void decreaseLikeCount() { if (this.likeCount > 0) this.likeCount--; }
+    public void increaseScrapCount() { this.scrapCount++; }
+    public void decreaseScrapCount() { if (this.scrapCount > 0) this.scrapCount--; }
 }
