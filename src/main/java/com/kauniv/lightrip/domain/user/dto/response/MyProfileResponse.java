@@ -26,6 +26,7 @@ public class MyProfileResponse {
     @Builder
     public static class Stats {
         private long passportCount;
+        private long districtCount;
         private long friendCount;
         private long likeCount;
         private long scrapCount;
