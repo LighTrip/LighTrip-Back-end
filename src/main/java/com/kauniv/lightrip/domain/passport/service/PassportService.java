@@ -20,6 +20,7 @@ import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import com.kauniv.lightrip.global.enums.District;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,7 +44,7 @@ import java.util.Set;
 import com.kauniv.lightrip.domain.passport.dto.response.LightResponse;
 import com.kauniv.lightrip.global.enums.Visibility;
 
-
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -82,6 +83,10 @@ public class PassportService {
                 .user(user)
                 .team(team)
                 .content(req.content())
+                .draft(req.draft())
+                .aiCategory(req.aiCategory())
+                // > 프론트에서 AI 초안 API 호출 결과를 전달받아 저장.
+                // > draft: 초안 원본, aiCategory: AI 분류 카테고리 초기값.
                 .latitude(req.latitude())
                 .longitude(req.longitude())
                 .address(req.address())
@@ -108,9 +113,7 @@ public class PassportService {
     public PassportResponse getPassport(Long userId, Long passportId) {
         Passport passport = passportRepository.findById(passportId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
-
         validateReadPermission(passport, userId);
-
         return PassportResponse.from(passport);
     }
 
@@ -119,17 +122,10 @@ public class PassportService {
     public PassportResponse update(Long userId, Long passportId, PassportUpdateRequest req) {
         Passport passport = passportRepository.findById(passportId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
-
         validateUpdatePermission(passport, userId);
-
-        passport.update(
-                req.content(), req.spaceName(),
-                req.category(), req.districtCategory(), req.visibility(),
-                req.musicTitle(), req.musicArtist()
-        );
-
+        passport.update(req.content(), req.spaceName(), req.category(),
+                req.districtCategory(), req.visibility(), req.musicTitle(), req.musicArtist());
         passport.replaceImages(req.imageUrls());
-
         return PassportResponse.from(passport);
     }
 
@@ -139,14 +135,10 @@ public class PassportService {
                                              PassportVisibilityRequest req) {
         Passport passport = passportRepository.findById(passportId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
-
-        // 본인 여권만 공개 범위 변경 가능 (팀 여권도 작성자만)
         if (!passport.isOwnedBy(userId)) {
             throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
         }
-
         passport.updateVisibility(req.visibility());
-
         return PassportResponse.from(passport);
     }
 
@@ -155,13 +147,10 @@ public class PassportService {
     public void delete(Long userId, Long passportId) {
         Passport passport = passportRepository.findById(passportId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
-
         if (!passport.isOwnedBy(userId)) {
             throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
         }
-
         District district = passport.getDistrictCategory();
-
         likeRepository.deleteAllByPassportId(passportId);
         scrapRepository.deleteAllByPassportId(passportId);
         passportRepository.delete(passport);
@@ -180,16 +169,13 @@ public class PassportService {
     // ========== DistrictCover 자동 생성 ==========
     private void createDistrictCoverIfFirst(User user, Passport passport) {
         District district = passport.getDistrictCategory();
-
         if (!districtCoverRepository.existsByUser_IdAndDistrictCategory(user.getId(), district)) {
             PassportImage firstImage = passport.getImages().get(0);
-
             DistrictCover cover = DistrictCover.builder()
                     .user(user)
                     .passportImage(firstImage)
                     .districtCategory(district)
                     .build();
-
             districtCoverRepository.save(cover);
         }
     }
@@ -213,10 +199,7 @@ public class PassportService {
     // ========== 수정 권한 검증 ==========
     private void validateUpdatePermission(Passport passport, Long userId) {
         if (passport.isTeamPassport()) {
-            boolean isMember = teamMemberRepository.existsByTeam_IdAndUser_Id(
-                    passport.getTeam().getId(), userId
-            );
-            if (!isMember) {
+            if (!teamMemberRepository.existsByTeam_IdAndUser_Id(passport.getTeam().getId(), userId)) {
                 throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
             }
         } else {
@@ -226,31 +209,18 @@ public class PassportService {
         }
     }
 
-    // ========== 조회 권한 검증 (Visibility) ==========
+    // ========== 조회 권한 검증 ==========
     private void validateReadPermission(Passport passport, Long userId) {
-        if (passport.isOwnedBy(userId)) {
-            return;
-        }
-
+        if (passport.isOwnedBy(userId)) return;
         if (passport.isTeamPassport()) {
-            boolean isMember = teamMemberRepository.existsByTeam_IdAndUser_Id(
-                    passport.getTeam().getId(), userId
-            );
-            if (isMember) {
-                return;
-            }
+            if (teamMemberRepository.existsByTeam_IdAndUser_Id(passport.getTeam().getId(), userId)) return;
         }
-
         switch (passport.getVisibility()) {
-            case PUBLIC -> {
-                return;
-            }
+            case PUBLIC -> {}
             case FRIENDS_ONLY -> {
-                Long ownerId = passport.getUser().getId();
-                if (friendRepository.isFriend(userId, ownerId)) {
-                    return;
+                if (!friendRepository.isFriend(userId, passport.getUser().getId())) {
+                    throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
                 }
-                throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
             }
             case PRIVATE -> throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
         }
@@ -259,54 +229,36 @@ public class PassportService {
     // ========== 내 기록 지역 조회 ==========
     public List<DistrictResponse> getMyDistricts(Long userId) {
         List<Object[]> counts = passportRepository.countByUserIdGroupByDistrict(userId);
-
         Map<District, String> coverMap = districtCoverRepository.findAllByUser_Id(userId).stream()
                 .collect(Collectors.toMap(
                         DistrictCover::getDistrictCategory,
                         cover -> cover.getPassportImage().getImageUrl()
                 ));
-
         return counts.stream()
-                .map(row -> {
-                    District district = (District) row[0];
-                    Long count = (Long) row[1];
-                    String thumbnailUrl = coverMap.get(district);
-                    return DistrictResponse.of(district, count, thumbnailUrl);
-                })
+                .map(row -> DistrictResponse.of((District) row[0], (Long) row[1], coverMap.get((District) row[0])))
                 .toList();
     }
 
-    // ========== 내 여권 목록 조회 (장소별, 커서 기반) ==========
-    public CursorResponse<PassportListResponse> getMyPassports(Long userId,
-                                                               Category category,
+    // ========== 내 여권 목록 조회 ==========
+    public CursorResponse<PassportListResponse> getMyPassports(Long userId, Category category,
                                                                District districtCategory,
-                                                               Long cursor,
-                                                               int size) {
+                                                               Long cursor, int size) {
         List<Passport> passports = (cursor == null)
                 ? passportRepository.findMyPassportsFirst(userId, category, districtCategory, PageRequest.of(0, size + 1))
                 : passportRepository.findMyPassportsAfterCursor(userId, cursor, category, districtCategory, PageRequest.of(0, size + 1));
         boolean hasNext = passports.size() > size;
-
-        if (hasNext) {
-            passports = passports.subList(0, size);
-        }
-
-        List<PassportListResponse> content = passports.stream()
-                .map(PassportListResponse::from)
-                .toList();
-
+        if (hasNext) passports = passports.subList(0, size);
         Long nextCursor = hasNext ? passports.get(passports.size() - 1).getId() : null;
-
-        return CursorResponse.of(content, hasNext, nextCursor);
+        return CursorResponse.of(passports.stream().map(PassportListResponse::from).toList(), hasNext, nextCursor);
     }
 
     // ========== 내 여권 통계 조회 ==========
     public PassportStatsResponse getMyStats(Long userId) {
-        long passportCount = passportRepository.countByUser_Id(userId);
-        long likeCount = likeRepository.countByUser_Id(userId);
-        long scrapCount = scrapRepository.countByUser_Id(userId);
-
-        return new PassportStatsResponse(passportCount, likeCount, scrapCount);
+        return new PassportStatsResponse(
+                passportRepository.countByUser_Id(userId),
+                likeRepository.countByUser_Id(userId),
+                scrapRepository.countByUser_Id(userId)
+        );
     }
 
     private static final int EARTH_RADIUS_KM = 6371;
@@ -320,44 +272,29 @@ public class PassportService {
         validateLocation(latitude, longitude);
 
         List<Long> candidateIds = passportRepository.findFeedPassportIds(
-                userId,
-                category != null ? category.name() : null,
+                userId, category != null ? category.name() : null,
                 district != null ? district.name() : null,
                 latitude, longitude, radius, cursor, cursorScore, size + 1
         );
 
-        if (candidateIds.isEmpty()) {
-            return FeedCursorResponse.of(List.of(), false, null, null);
-        }
+        if (candidateIds.isEmpty()) return FeedCursorResponse.of(List.of(), false, null, null);
 
         boolean hasNext = candidateIds.size() > size;
-        if (hasNext) {
-            candidateIds = candidateIds.subList(0, size);
-        }
+        if (hasNext) candidateIds = candidateIds.subList(0, size);
 
         List<Passport> passports = passportRepository.findAllByIdsForFeed(candidateIds);
-
-        Map<Long, Passport> passportMap = passports.stream()
-                .collect(Collectors.toMap(Passport::getId, p -> p));
-        List<Passport> ordered = candidateIds.stream()
-                .map(passportMap::get)
-                .filter(Objects::nonNull)
-                .toList();
+        Map<Long, Passport> passportMap = passports.stream().collect(Collectors.toMap(Passport::getId, p -> p));
+        List<Passport> ordered = candidateIds.stream().map(passportMap::get).filter(Objects::nonNull).toList();
 
         Set<Long> likedIds = new HashSet<>(likeRepository.findLikedPassportIds(userId, candidateIds));
         Set<Long> scrappedIds = new HashSet<>(scrapRepository.findScrappedPassportIds(userId, candidateIds));
-
-        List<Long> writerIds = ordered.stream()
-                .map(p -> p.getUser().getId())
-                .distinct()
-                .toList();
+        List<Long> writerIds = ordered.stream().map(p -> p.getUser().getId()).distinct().toList();
         Set<Long> friendIds = new HashSet<>(friendRepository.findFriendUserIdsAmong(userId, writerIds));
 
         List<FeedPassportResponse> content = ordered.stream()
                 .map(p -> {
                     BigDecimal distance = (latitude != null && longitude != null)
-                            ? calculateDistance(latitude, longitude, p.getLatitude(), p.getLongitude())
-                            : null;
+                            ? calculateDistance(latitude, longitude, p.getLatitude(), p.getLongitude()) : null;
                     return FeedPassportResponse.of(p, likedIds, scrappedIds, friendIds, distance);
                 })
                 .toList();
@@ -373,48 +310,32 @@ public class PassportService {
         return FeedCursorResponse.of(content, hasNext, nextCursor, nextCursorScore);
     }
 
-    // ========== 위치 파라미터 검증 ==========
     private void validateLocation(BigDecimal latitude, BigDecimal longitude) {
         if ((latitude == null) != (longitude == null)) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
     }
 
-    // ========== Haversine 거리 계산 ==========
     private BigDecimal calculateDistance(BigDecimal lat1, BigDecimal lng1,
                                          BigDecimal lat2, BigDecimal lng2) {
         double rLat1 = Math.toRadians(lat1.doubleValue());
         double rLat2 = Math.toRadians(lat2.doubleValue());
         double dLat = Math.toRadians(lat2.doubleValue() - lat1.doubleValue());
         double dLng = Math.toRadians(lng2.doubleValue() - lng1.doubleValue());
-
         double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
                 + Math.cos(rLat1) * Math.cos(rLat2)
                 * Math.sin(dLng / 2) * Math.sin(dLng / 2);
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        double distance = EARTH_RADIUS_KM * c;
-
-        return BigDecimal.valueOf(distance).setScale(2, RoundingMode.HALF_UP);
+        return BigDecimal.valueOf(EARTH_RADIUS_KM * c).setScale(2, RoundingMode.HALF_UP);
     }
 
     // ========== 내 불빛 조회 ==========
-    public List<LightResponse> getMyLights(Long userId,
-                                           BigDecimal minLat, BigDecimal maxLat,
+    public List<LightResponse> getMyLights(Long userId, BigDecimal minLat, BigDecimal maxLat,
                                            BigDecimal minLng, BigDecimal maxLng) {
         validateBoundingBox(minLat, maxLat, minLng, maxLng);
-
-        // 본인은 모든 visibility 노출
-        List<Visibility> allowed = List.of(
-                Visibility.PUBLIC,
-                Visibility.PRIVATE,
-                Visibility.FRIENDS_ONLY
-        );
-
-        return passportRepository.findLightsInBounds(
-                        userId, minLat, maxLat, minLng, maxLng, allowed)
-                .stream()
-                .map(LightResponse::from)
-                .toList();
+        return passportRepository.findLightsInBounds(userId, minLat, maxLat, minLng, maxLng,
+                        List.of(Visibility.PUBLIC, Visibility.PRIVATE, Visibility.FRIENDS_ONLY))
+                .stream().map(LightResponse::from).toList();
     }
 
     // ========== 특정 사용자 불빛 조회 ==========
@@ -422,36 +343,20 @@ public class PassportService {
                                              BigDecimal minLat, BigDecimal maxLat,
                                              BigDecimal minLng, BigDecimal maxLng) {
         validateBoundingBox(minLat, maxLat, minLng, maxLng);
-
-        // 본인 조회면 me 메서드로 위임
-        if (viewerId.equals(targetUserId)) {
-            return getMyLights(viewerId, minLat, maxLat, minLng, maxLng);
-        }
-
-        // 대상 사용자 존재 검증
-        if (!userRepository.existsById(targetUserId)) {
-            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
-        }
-
-        // 친구 여부에 따라 visibility 필터링
+        if (viewerId.equals(targetUserId)) return getMyLights(viewerId, minLat, maxLat, minLng, maxLng);
+        if (!userRepository.existsById(targetUserId)) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         boolean isFriend = friendRepository.isFriend(viewerId, targetUserId);
         List<Visibility> allowed = isFriend
                 ? List.of(Visibility.PUBLIC, Visibility.FRIENDS_ONLY)
                 : List.of(Visibility.PUBLIC);
-
-        return passportRepository.findLightsInBounds(
-                        targetUserId, minLat, maxLat, minLng, maxLng, allowed)
-                .stream()
-                .map(LightResponse::from)
-                .toList();
+        return passportRepository.findLightsInBounds(targetUserId, minLat, maxLat, minLng, maxLng, allowed)
+                .stream().map(LightResponse::from).toList();
     }
 
-    // ========== Bounding Box 검증 ==========
     private void validateBoundingBox(BigDecimal minLat, BigDecimal maxLat,
                                      BigDecimal minLng, BigDecimal maxLng) {
         if (minLat.compareTo(maxLat) > 0 || minLng.compareTo(maxLng) > 0) {
             throw new BusinessException(ErrorCode.INVALID_INPUT_VALUE);
         }
     }
-
 }
