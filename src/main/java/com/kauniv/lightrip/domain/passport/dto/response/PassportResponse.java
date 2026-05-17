@@ -2,6 +2,7 @@ package com.kauniv.lightrip.domain.passport.dto.response;
 
 import com.kauniv.lightrip.domain.passport.entity.Passport;
 import com.kauniv.lightrip.domain.passport.entity.PassportImage;
+import com.kauniv.lightrip.domain.passport.entity.Stamp;
 import com.kauniv.lightrip.global.enums.Category;
 import com.kauniv.lightrip.global.enums.District;
 import com.kauniv.lightrip.global.enums.Visibility;
@@ -32,12 +33,17 @@ public record PassportResponse(
         String musicArtist,
         Long likeCount,
         Long scrapCount,
+        List<String> stampUrls,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
     public static PassportResponse from(Passport p) {
         List<String> urls = p.getImages().stream()
                 .map(PassportImage::getImageUrl)
+                .toList();
+
+        List<String> stamps = p.getStamps().stream()
+                .map(Stamp::getImageUrl)
                 .toList();
 
         return new PassportResponse(
@@ -57,8 +63,9 @@ public record PassportResponse(
                 p.getVisibility(),
                 p.getMusicTitle(),
                 p.getMusicArtist(),
-                p.getLikeCount(),       // 🆕
-                p.getScrapCount(),      // 🆕
+                p.getLikeCount(),
+                p.getScrapCount(),
+                stamps,
                 p.getCreatedAt(),
                 p.getUpdatedAt()
         );
