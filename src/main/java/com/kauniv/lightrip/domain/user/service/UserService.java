@@ -67,6 +67,7 @@ public class UserService {
 
         MyProfileResponse.Stats stats = MyProfileResponse.Stats.builder()
                 .passportCount(passportRepository.countByUser_Id(userId))
+                .districtCount(passportRepository.countDistinctDistrictByUserId(userId))
                 .friendCount(friendRepository.findAllFriends(userId).size())
                 .likeCount(likeRepository.countByUser_Id(userId))
                 .scrapCount(scrapRepository.countByUser_Id(userId))
@@ -89,6 +90,7 @@ public class UserService {
 
         MyProfileResponse.Stats stats = MyProfileResponse.Stats.builder()
                 .passportCount(passportRepository.countByUser_Id(userId))
+                .districtCount(passportRepository.countDistinctDistrictByUserId(userId))
                 .friendCount(friendRepository.findAllFriends(userId).size())
                 .likeCount(likeRepository.countByUser_Id(userId))
                 .scrapCount(scrapRepository.countByUser_Id(userId))

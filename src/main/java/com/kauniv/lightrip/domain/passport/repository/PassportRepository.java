@@ -158,4 +158,11 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
     GROUP BY p.user.id
     """)
     List<Object[]> countByUserIds(@Param("userIds") List<Long> userIds);
+
+    @Query("""
+    SELECT COUNT(DISTINCT p.districtCategory)
+    FROM Passport p
+    WHERE p.user.id = :userId
+    """)
+    long countDistinctDistrictByUserId(@Param("userId") Long userId);
 }
