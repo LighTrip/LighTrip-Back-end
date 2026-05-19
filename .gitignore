@@ -45,3 +45,6 @@ out/
 claude.md
 .claude.md
 *.claude.md
+
+# 터널링 관련 #
+tunnel.bat
