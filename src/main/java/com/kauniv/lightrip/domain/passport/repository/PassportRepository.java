@@ -11,7 +11,6 @@ import com.kauniv.lightrip.global.enums.Category;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
-import com.kauniv.lightrip.global.enums.Visibility;
 
 public interface PassportRepository extends JpaRepository<Passport, Long> {
 
@@ -34,7 +33,6 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
         """)
     List<Object[]> countByUserIdGroupByDistrict(Long userId);
 
-    // 친구 지도 조회: PUBLIC 여권 기준 district별 여권 수
     @Query("""
         SELECT p.districtCategory, COUNT(p)
         FROM Passport p
@@ -86,13 +84,11 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
                OR p.district_category = CAST(:district AS varchar))
           AND (
             :latitude IS NULL OR :longitude IS NULL
-            OR (6371 * acos(
-                  LEAST(1.0, GREATEST(-1.0,
-                    cos(radians(:latitude)) * cos(radians(p.latitude))
-                    * cos(radians(p.longitude) - radians(:longitude))
-                    + sin(radians(:latitude)) * sin(radians(p.latitude))
-                  ))
-                )) <= :radius
+            OR ST_DWithin(
+                p.location::geography,
+                ST_SetSRID(ST_MakePoint(CAST(:longitude AS float), CAST(:latitude AS float)), 4326)::geography,
+                CAST(:radius AS float) * 1000
+            )
           )
           AND (
             :cursor IS NULL OR :cursorScore IS NULL
@@ -114,6 +110,10 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
             @Param("cursorScore") Long cursorScore,
             @Param("limit") int limit
     );
+    // > ST_DWithin: 두 지점 간 거리가 지정 미터 이내인지 판별.
+    // > ::geography 캐스팅으로 지구 곡률 반영한 정확한 거리 계산.
+    // > :radius * 1000: km → m 변환.
+    // > GiST 인덱스(idx_passport_location) 활용으로 기존 Haversine 대비 성능 개선.
 
     @Query("""
         SELECT DISTINCT p FROM Passport p
@@ -123,20 +123,29 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
         """)
     List<Passport> findAllByIdsForFeed(List<Long> ids);
 
-    @Query("""
-        SELECT DISTINCT p FROM Passport p
-        LEFT JOIN FETCH p.images
-        WHERE p.user.id = :targetUserId
-          AND p.latitude BETWEEN :minLat AND :maxLat
-          AND p.longitude BETWEEN :minLng AND :maxLng
-          AND p.visibility IN :visibilities
-        """)
+    @Query(value = """
+        SELECT DISTINCT p.*
+        FROM passport p
+        WHERE p.user_id = :targetUserId
+          AND ST_Within(
+              p.location,
+              ST_MakeEnvelope(CAST(:minLng AS float), CAST(:minLat AS float),
+                              CAST(:maxLng AS float), CAST(:maxLat AS float), 4326)
+          )
+          AND p.visibility IN (:visibilities)
+        """, nativeQuery = true)
     List<Passport> findLightsInBounds(
-            Long targetUserId,
-            BigDecimal minLat, BigDecimal maxLat,
-            BigDecimal minLng, BigDecimal maxLng,
-            List<Visibility> visibilities
+            @Param("targetUserId") Long targetUserId,
+            @Param("minLat") BigDecimal minLat,
+            @Param("maxLat") BigDecimal maxLat,
+            @Param("minLng") BigDecimal minLng,
+            @Param("maxLng") BigDecimal maxLng,
+            @Param("visibilities") List<String> visibilities
     );
+    // > ST_Within: 포인트가 사각형 영역 안에 있는지 확인.
+    // > ST_MakeEnvelope: bounding box 생성 (minLng, minLat, maxLng, maxLat).
+    // > GiST 인덱스 활용으로 기존 BETWEEN 대비 성능 개선.
+    // > visibilities는 List<String>으로 받아서 네이티브 쿼리 IN절에 전달.
 
     @Query("""
         SELECT p FROM Passport p
@@ -150,7 +159,6 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
 
     List<Passport> findAllByTeam_Id(Long teamId);
 
-    // 여러 유저의 도장 수를 한번에 조회 (N+1 방지)
     @Query("""
     SELECT p.user.id, COUNT(p)
     FROM Passport p
