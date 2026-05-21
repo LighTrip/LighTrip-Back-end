@@ -144,7 +144,7 @@ public class PassportController {
 
     @Operation(summary = "릴스형 여권 피드 조회",
             description = "다른 사용자의 PUBLIC 여권을 인기순으로 조회합니다. 카테고리/지역/위치 필터 지원, 커서 기반 무한스크롤.")
-    @GetMapping("/api/v1/feed")
+    @GetMapping("/feed")
     public ApiResponse<FeedCursorResponse<FeedPassportResponse>> getFeed(
             @AuthenticationPrincipal Long userId,
             @Parameter(description = "카테고리 필터") @RequestParam(required = false) Category category,
@@ -165,7 +165,7 @@ public class PassportController {
     @Operation(summary = "내 불빛 조회",
             description = "지도 화면에 표시할 본인 여권 좌표를 Bounding Box 범위 내에서 조회합니다. " +
                     "모든 visibility 노출.")
-    @GetMapping("/api/v1/users/me/lights")
+    @GetMapping("/lights/me")
     public ApiResponse<List<LightResponse>> getMyLights(
             @AuthenticationPrincipal Long userId,
             @Parameter(description = "최소 위도 (좌하단)") @RequestParam BigDecimal minLat,
@@ -181,7 +181,7 @@ public class PassportController {
     @Operation(summary = "특정 사용자 불빛 조회",
             description = "지정된 사용자가 작성한 여권 좌표를 Bounding Box 범위 내에서 조회합니다. " +
                     "PUBLIC 노출 + 친구 관계인 경우 FRIENDS_ONLY 포함.")
-    @GetMapping("/api/v1/users/{userId}/lights")
+    @GetMapping("/lights/{userId}")
     public ApiResponse<List<LightResponse>> getUserLights(
             @AuthenticationPrincipal Long viewerId,
             @Parameter(description = "조회 대상 사용자 ID") @PathVariable Long userId,
