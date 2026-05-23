@@ -227,13 +227,16 @@ public class PassportService {
     // ========== 내 기록 지역 조회 ==========
     public List<DistrictResponse> getMyDistricts(Long userId) {
         List<Object[]> counts = passportRepository.countByUserIdGroupByDistrict(userId);
-        Map<District, String> coverMap = districtCoverRepository.findAllByUser_Id(userId).stream()
-                .collect(Collectors.toMap(
-                        DistrictCover::getDistrictCategory,
-                        cover -> cover.getPassportImage().getImageUrl()
-                ));
+        Map<District, DistrictCover> coverMap = districtCoverRepository.findAllByUser_Id(userId).stream()
+                .collect(Collectors.toMap(DistrictCover::getDistrictCategory, c -> c));
         return counts.stream()
-                .map(row -> DistrictResponse.of((District) row[0], (Long) row[1], coverMap.get((District) row[0])))
+                .map(row -> {
+                    District district = (District) row[0];
+                    DistrictCover cover = coverMap.get(district);
+                    String thumbnailUrl = cover != null ? cover.getPassportImage().getImageUrl() : null;
+                    String textColor = cover != null ? cover.getTextColor() : null;
+                    return DistrictResponse.of(district, (Long) row[1], thumbnailUrl, textColor);
+                })
                 .toList();
     }
 

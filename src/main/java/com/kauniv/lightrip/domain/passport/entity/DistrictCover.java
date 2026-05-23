@@ -46,6 +46,12 @@ public class DistrictCover {
     @Column(name = "district_category", nullable = false)
     private District districtCategory;
 
+    @Column(name = "text_color", nullable = false, length = 7)
+    @Builder.Default
+    private String textColor = "#FFFFFF";
+    // > 커버 이미지 위에 표시되는 지역명 텍스트 색상 (HEX #RRGGBB).
+    // > 기본값 흰색. PATCH API로 사용자가 변경.
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -56,5 +62,9 @@ public class DistrictCover {
 
     public void changeCoverImage(PassportImage newImage) {
         this.passportImage = newImage;
+    }
+
+    public void changeTextColor(String textColor) {
+        this.textColor = textColor;
     }
 }

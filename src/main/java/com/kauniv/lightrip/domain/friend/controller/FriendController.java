@@ -101,7 +101,7 @@ public class FriendController {
 
         List<FriendPassportResponse> response =
                 friendService.getFriendPassports(userId, friendId, pageable);
-        return ApiResponse.success(response);
+        return ApiResponse.success(response); 
     }
 
     @Operation(summary = "친구 지도 조회", description = "친구의 공개(PUBLIC) 여권 기준으로 방문한 지역 목록을 조회합니다. ACCEPTED 상태의 친구만 조회 가능합니다.")

@@ -1,0 +1,6 @@
+FROM postgis/postgis:17-3.5
+
+# pgvector 설치 (PostGIS 공식 이미지가 Debian 기반이라 apt로 가능)
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends postgresql-17-pgvector \
+ && rm -rf /var/lib/apt/lists/*

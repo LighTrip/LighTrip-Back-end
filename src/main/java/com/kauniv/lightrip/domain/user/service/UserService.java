@@ -8,7 +8,6 @@ import com.kauniv.lightrip.domain.user.dto.response.MyProfileResponse;
 import com.kauniv.lightrip.domain.user.dto.response.PublicProfileResponse;
 import com.kauniv.lightrip.domain.user.dto.request.UpdateProfileRequest;
 import com.kauniv.lightrip.global.auth.entity.Auth;
-import com.kauniv.lightrip.domain.user.entity.CurrentMode;
 import com.kauniv.lightrip.domain.user.entity.User;
 import com.kauniv.lightrip.global.auth.repository.AuthRepository;
 import com.kauniv.lightrip.domain.user.repository.UserRepository;
@@ -47,7 +46,6 @@ public class UserService {
                 User.builder()
                         .nickname(oAuth2UserInfo.getNickname())
                         .email(oAuth2UserInfo.getEmail())
-                        .currentMode(CurrentMode.INDIVIDUAL)
                         .build()
         );
 
