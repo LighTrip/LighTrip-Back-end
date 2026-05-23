@@ -17,14 +17,18 @@ public record DistrictResponse(
         Long passportCount,
 
         @Schema(description = "대표 이미지 URL")
-        String thumbnailUrl
+        String thumbnailUrl,
+
+        @Schema(description = "지역명 텍스트 색상 (HEX #RRGGBB)", example = "#FFFFFF")
+        String textColor
 ) {
-    public static DistrictResponse of(District district, Long count, String thumbnailUrl) {
+    public static DistrictResponse of(District district, Long count, String thumbnailUrl, String textColor) {
         return new DistrictResponse(
                 district,
                 district.getDisplayName(),
                 count,
-                thumbnailUrl
+                thumbnailUrl,
+                textColor
         );
     }
 }

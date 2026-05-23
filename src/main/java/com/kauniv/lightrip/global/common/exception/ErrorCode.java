@@ -59,7 +59,11 @@ public enum ErrorCode {
 
     // ===== Ranking =====
     RANKING_NOT_FOUND(HttpStatus.NOT_FOUND, "R001", "랭킹 정보가 존재하지 않습니다."),
-    RANKING_CALCULATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "R002", "랭킹 산정 중 오류가 발생했습니다.");
+    RANKING_CALCULATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "R002", "랭킹 산정 중 오류가 발생했습니다."),
+
+    // ===== DistrictCover =====
+    DISTRICT_COVER_NOT_FOUND(HttpStatus.NOT_FOUND, "D001", "존재하지 않는 지역 커버입니다."),
+    DISTRICT_COVER_FORBIDDEN(HttpStatus.FORBIDDEN, "D002", "해당 지역 커버에 대한 권한이 없습니다.");
 
     private final HttpStatus status;
     private final String code;

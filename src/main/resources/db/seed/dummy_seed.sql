@@ -4,13 +4,12 @@ BEGIN;
 SELECT setseed(0.42);
 
 
-INSERT INTO users (nickname, email, profile_img, friend_code, current_mode, location, bio, created_at, updated_at)
+INSERT INTO users (nickname, email, profile_img, friend_code, location, bio, created_at, updated_at)
 SELECT
     'dummy_user_' || LPAD(gs::text, 3, '0'),
     'dummy' || gs || '@lightrip.dev',
     'https://cdn.lightrip.cloud/profile-images/dummy/profile_' || gs || '.jpg',
     'D' || LPAD(UPPER(TO_HEX(gs)), 7, '0'),
-    CASE WHEN gs % 5 = 0 THEN 'TEAM' ELSE 'INDIVIDUAL' END,
     CASE (gs % 3)
         WHEN 0 THEN '서울특별시'
         WHEN 1 THEN '경기도'

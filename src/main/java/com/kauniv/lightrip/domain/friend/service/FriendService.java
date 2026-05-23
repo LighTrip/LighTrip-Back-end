@@ -187,18 +187,17 @@ public class FriendService {
 
         List<Object[]> counts = passportRepository.countPublicByUserIdGroupByDistrict(friendId);
 
-        Map<District, String> coverMap = districtCoverRepository.findAllByUser_Id(friendId).stream()
-                .collect(Collectors.toMap(
-                        DistrictCover::getDistrictCategory,
-                        cover -> cover.getPassportImage().getImageUrl()
-                ));
+        Map<District, DistrictCover> coverMap = districtCoverRepository.findAllByUser_Id(friendId).stream()
+                .collect(Collectors.toMap(DistrictCover::getDistrictCategory, c -> c));
 
         return counts.stream()
                 .map(row -> {
                     District district = (District) row[0];
                     Long count = (Long) row[1];
-                    String thumbnailUrl = coverMap.get(district);
-                    return DistrictResponse.of(district, count, thumbnailUrl);
+                    DistrictCover cover = coverMap.get(district);
+                    String thumbnailUrl = cover != null ? cover.getPassportImage().getImageUrl() : null;
+                    String textColor = cover != null ? cover.getTextColor() : null;
+                    return DistrictResponse.of(district, count, thumbnailUrl, textColor);
                 })
                 .toList();
     }

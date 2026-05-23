@@ -1,6 +1,5 @@
 package com.kauniv.lightrip.domain.user.dto.response;
 
-import com.kauniv.lightrip.domain.user.entity.CurrentMode;
 import com.kauniv.lightrip.domain.user.entity.User;
 import lombok.Builder;
 import lombok.Getter;
@@ -18,7 +17,8 @@ public class MyProfileResponse {
     private String friendCode;
     private String location;
     private String bio;
-    private CurrentMode currentMode;
+    private String themeColor;
+    private String passportTheme;
     private LocalDateTime createdAt;
     private Stats stats;
 
@@ -41,7 +41,8 @@ public class MyProfileResponse {
                 .friendCode(user.getFriendCode())
                 .location(user.getLocation())
                 .bio(user.getBio())
-                .currentMode(user.getCurrentMode())
+                .themeColor(user.getThemeColor())
+                .passportTheme(user.getPassportTheme())
                 .createdAt(user.getCreatedAt())
                 .stats(stats)
                 .build();
