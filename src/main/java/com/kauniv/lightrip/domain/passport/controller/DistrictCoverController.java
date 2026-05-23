@@ -1,5 +1,6 @@
 package com.kauniv.lightrip.domain.passport.controller;
 
+import com.kauniv.lightrip.domain.passport.dto.request.DistrictCoverImageRequest;
 import com.kauniv.lightrip.domain.passport.dto.request.DistrictCoverTextColorRequest;
 import com.kauniv.lightrip.domain.passport.service.DistrictCoverService;
 import com.kauniv.lightrip.global.common.response.ApiResponse;
@@ -29,5 +30,17 @@ public class DistrictCoverController {
     ) {
         districtCoverService.updateTextColor(userId, coverId, request);
         return ApiResponse.success("텍스트 색상이 변경되었습니다.", null);
+    }
+
+    @Operation(summary = "지역 커버 이미지 변경",
+            description = "지역 커버의 대표 이미지를 본인 여권 이미지 중 하나로 변경합니다. 본인 소유 커버 + 본인 여권 이미지만 허용됩니다.")
+    @PatchMapping("/{coverId}/image")
+    public ApiResponse<Void> updateCoverImage(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "지역 커버 ID") @PathVariable Long coverId,
+            @Valid @RequestBody DistrictCoverImageRequest request
+    ) {
+        districtCoverService.updateCoverImage(userId, coverId, request);
+        return ApiResponse.success("커버 이미지가 변경되었습니다.", null);
     }
 }
