@@ -1,5 +1,6 @@
 package com.kauniv.lightrip.domain.passport.service;
 
+import com.kauniv.lightrip.domain.passport.dto.request.DistrictCoverImageRequest;
 import com.kauniv.lightrip.domain.passport.dto.request.DistrictCoverTextColorRequest;
 import com.kauniv.lightrip.domain.passport.entity.DistrictCover;
 import com.kauniv.lightrip.domain.passport.repository.DistrictCoverRepository;
@@ -26,5 +27,17 @@ public class DistrictCoverService {
         }
 
         cover.changeTextColor(req.textColor());
+    }
+
+    @Transactional
+    public void updateCoverImage(Long userId, Long coverId, DistrictCoverImageRequest req) {
+        DistrictCover cover = districtCoverRepository.findById(coverId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.DISTRICT_COVER_NOT_FOUND));
+
+        if (!cover.getUser().getId().equals(userId)) {
+            throw new BusinessException(ErrorCode.DISTRICT_COVER_FORBIDDEN);
+        }
+
+        cover.changeCoverImage(req.imageUrl());
     }
 }

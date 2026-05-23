@@ -38,9 +38,9 @@ public class DistrictCover {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "passport_image_id", nullable = false)
-    private PassportImage passportImage;
+    @Column(name = "image_url", columnDefinition = "TEXT", nullable = false)
+    private String imageUrl;
+    // > 커버 대표 이미지 URL. 여권 이미지 URL을 복사하거나, 사용자가 자유롭게 외부 URL로 변경 가능.
 
     @Enumerated(EnumType.STRING)
     @Column(name = "district_category", nullable = false)
@@ -60,8 +60,8 @@ public class DistrictCover {
     @Column(name = "updated_at")
     private LocalDateTime updatedAt;
 
-    public void changeCoverImage(PassportImage newImage) {
-        this.passportImage = newImage;
+    public void changeCoverImage(String imageUrl) {
+        this.imageUrl = imageUrl;
     }
 
     public void changeTextColor(String textColor) {
