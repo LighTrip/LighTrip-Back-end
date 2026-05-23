@@ -33,15 +33,20 @@ public class User {
     @Column(name = "friend_code", nullable = false, unique = true, length = 8)
     private String friendCode;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "current_mode")
-    private CurrentMode currentMode;
-
     @Column(name = "location", length = 100)
     private String location;
 
     @Column(name = "bio", columnDefinition = "TEXT")
     private String bio;
+
+    @Column(name = "theme_color", nullable = false, length = 7)
+    @Builder.Default
+    private String themeColor = "#FFFFFF";
+    // > 프로필 테마 색상 (HEX #RRGGBB). 기본 흰색.
+
+    @Column(name = "passport_theme", columnDefinition = "TEXT")
+    private String passportTheme;
+    // > 여권 테마 (테마 이름 또는 이미지 URL). nullable.
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -68,5 +73,13 @@ public class User {
         this.profileImg = profileImg;
         this.location = location;
         this.bio = bio;
+    }
+
+    public void changeThemeColor(String themeColor) {
+        this.themeColor = themeColor;
+    }
+
+    public void changePassportTheme(String passportTheme) {
+        this.passportTheme = passportTheme;
     }
 }
