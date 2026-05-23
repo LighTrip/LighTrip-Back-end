@@ -168,10 +168,10 @@ public class PassportService {
     private void createDistrictCoverIfFirst(User user, Passport passport) {
         District district = passport.getDistrictCategory();
         if (!districtCoverRepository.existsByUser_IdAndDistrictCategory(user.getId(), district)) {
-            PassportImage firstImage = passport.getImages().get(0);
+            String firstImageUrl = passport.getImages().get(0).getImageUrl();
             DistrictCover cover = DistrictCover.builder()
                     .user(user)
-                    .passportImage(firstImage)
+                    .imageUrl(firstImageUrl)
                     .districtCategory(district)
                     .build();
             districtCoverRepository.save(cover);
@@ -186,7 +186,7 @@ public class PassportService {
                             .ifPresentOrElse(
                                     latestPassport -> {
                                         if (!latestPassport.getImages().isEmpty()) {
-                                            cover.changeCoverImage(latestPassport.getImages().get(0));
+                                            cover.changeCoverImage(latestPassport.getImages().get(0).getImageUrl());
                                         }
                                     },
                                     () -> districtCoverRepository.delete(cover)
@@ -233,7 +233,7 @@ public class PassportService {
                 .map(row -> {
                     District district = (District) row[0];
                     DistrictCover cover = coverMap.get(district);
-                    String thumbnailUrl = cover != null ? cover.getPassportImage().getImageUrl() : null;
+                    String thumbnailUrl = cover != null ? cover.getImageUrl() : null;
                     String textColor = cover != null ? cover.getTextColor() : null;
                     return DistrictResponse.of(district, (Long) row[1], thumbnailUrl, textColor);
                 })

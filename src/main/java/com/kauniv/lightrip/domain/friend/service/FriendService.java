@@ -195,7 +195,7 @@ public class FriendService {
                     District district = (District) row[0];
                     Long count = (Long) row[1];
                     DistrictCover cover = coverMap.get(district);
-                    String thumbnailUrl = cover != null ? cover.getPassportImage().getImageUrl() : null;
+                    String thumbnailUrl = cover != null ? cover.getImageUrl() : null;
                     String textColor = cover != null ? cover.getTextColor() : null;
                     return DistrictResponse.of(district, count, thumbnailUrl, textColor);
                 })

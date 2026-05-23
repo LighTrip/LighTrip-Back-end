@@ -29,8 +29,6 @@ public enum ErrorCode {
     PASSPORT_FORBIDDEN(HttpStatus.FORBIDDEN, "P002", "해당 여권에 대한 권한이 없습니다."),
     PASSPORT_DUPLICATE(HttpStatus.CONFLICT, "P003", "같은 장소, 같은 날짜에 이미 등록된 여권이 있습니다."),
     PASSPORT_VERIFICATION_FAILED(HttpStatus.BAD_REQUEST, "P004", "방문 인증에 실패했습니다."),
-    PASSPORT_IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "P005", "존재하지 않는 여권 이미지입니다."),
-    PASSPORT_IMAGE_FORBIDDEN(HttpStatus.FORBIDDEN, "P006", "해당 여권 이미지에 대한 권한이 없습니다."),
 
     // ===== Scrap =====
     SCRAP_NOT_FOUND(HttpStatus.NOT_FOUND, "S001", "스크랩 기록이 존재하지 않습니다."),
