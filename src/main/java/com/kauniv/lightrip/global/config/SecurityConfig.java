@@ -26,6 +26,7 @@ public class SecurityConfig {
     private final RedisService redisService;
 
     @Bean
+    @SuppressWarnings("java:S4502") // JWT stateless 인증 구조상 CSRF 공격 불가능
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
