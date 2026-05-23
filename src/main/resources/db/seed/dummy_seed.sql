@@ -218,11 +218,11 @@ WHERE p.passport_id = s.passport_id;
 -- 9. DISTRICT_COVER (유저별 지역 대표 이미지)
 --    각 (user, district)별 가장 최근 여권의 첫 이미지를 cover 로 지정
 -- =============================================================================
-INSERT INTO district_cover (user_id, district_category, passport_image_id, created_at, updated_at)
+INSERT INTO district_cover (user_id, district_category, image_url, created_at, updated_at)
 SELECT DISTINCT ON (p.user_id, p.district_category)
     p.user_id,
     p.district_category,
-    pi.passport_image_id,
+    pi.image_url,
     NOW(),
     NOW()
 FROM passport p
