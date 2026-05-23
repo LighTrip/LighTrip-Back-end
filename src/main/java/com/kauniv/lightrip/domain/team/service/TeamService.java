@@ -83,6 +83,14 @@ public class TeamService {
         return TeamResponse.from(team);
     }
 
+    // 현재 유저가 소속된 팀을 반환한다. 유저당 팀 1개 제약이 있으므로 단일 결과를 반환하며,
+    // 소속 팀이 없으면 TEAM_NOT_JOINED 예외를 던진다.
+    public TeamResponse getMyTeam(Long userId) {
+        TeamMember member = teamMemberRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_JOINED));
+        return TeamResponse.from(member.getTeam());
+    }
+
     public TeamResponse getTeam(Long teamId) {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND));
