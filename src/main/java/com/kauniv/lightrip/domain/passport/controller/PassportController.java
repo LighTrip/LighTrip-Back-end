@@ -163,18 +163,20 @@ public class PassportController {
     }
 
     @Operation(summary = "내 불빛 조회",
-            description = "지도 화면에 표시할 본인 여권 좌표를 Bounding Box 범위 내에서 조회합니다. " +
-                    "모든 visibility 노출.")
+            description = "지도 화면에 표시할 여권 좌표를 Bounding Box 범위 내에서 조회합니다. " +
+                    "teamId 미지정 시 본인 여권(모든 visibility) 조회, " +
+                    "teamId 지정 시 해당 팀 여권(visibility 무시) 조회 — 팀 멤버만 허용.")
     @GetMapping("/lights/me")
     public ApiResponse<List<LightResponse>> getMyLights(
             @AuthenticationPrincipal Long userId,
             @Parameter(description = "최소 위도 (좌하단)") @RequestParam BigDecimal minLat,
             @Parameter(description = "최대 위도 (우상단)") @RequestParam BigDecimal maxLat,
             @Parameter(description = "최소 경도 (좌하단)") @RequestParam BigDecimal minLng,
-            @Parameter(description = "최대 경도 (우상단)") @RequestParam BigDecimal maxLng
+            @Parameter(description = "최대 경도 (우상단)") @RequestParam BigDecimal maxLng,
+            @Parameter(description = "팀 ID (선택) — 지정 시 해당 팀 여권 조회") @RequestParam(required = false) Long teamId
     ) {
         return ApiResponse.success(
-                passportService.getMyLights(userId, minLat, maxLat, minLng, maxLng)
+                passportService.getMyLights(userId, minLat, maxLat, minLng, maxLng, teamId)
         );
     }
 
