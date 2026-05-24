@@ -147,6 +147,25 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
     // > GiST 인덱스 활용으로 기존 BETWEEN 대비 성능 개선.
     // > visibilities는 List<String>으로 받아서 네이티브 쿼리 IN절에 전달.
 
+    @Query(value = """
+        SELECT DISTINCT p.*
+        FROM passport p
+        WHERE p.team_id = :teamId
+          AND ST_Within(
+              p.location,
+              ST_MakeEnvelope(CAST(:minLng AS float), CAST(:minLat AS float),
+                              CAST(:maxLng AS float), CAST(:maxLat AS float), 4326)
+          )
+        """, nativeQuery = true)
+    List<Passport> findTeamLightsInBounds(
+            @Param("teamId") Long teamId,
+            @Param("minLat") BigDecimal minLat,
+            @Param("maxLat") BigDecimal maxLat,
+            @Param("minLng") BigDecimal minLng,
+            @Param("maxLng") BigDecimal maxLng
+    );
+    // > 팀 여권만 (team_id 필터). visibility 무시 — 팀 내부면 PRIVATE도 노출 (B-1 정책).
+
     @Query("""
         SELECT p FROM Passport p
         LEFT JOIN FETCH p.images
