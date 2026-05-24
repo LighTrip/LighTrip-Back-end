@@ -34,15 +34,6 @@ public class TeamController {
                 .body(teamService.create(userId, req));
     }
 
-    // 현재 로그인한 유저의 소속 팀을 반환한다.
-    // 팀 모드 전환 시 프론트엔드가 teamId를 얻기 위해 호출하며, 미소속 시 404를 반환한다.
-    @Operation(summary = "내 팀 조회", description = "현재 로그인한 유저가 소속된 팀 정보를 반환합니다. 팀 미소속 시 404를 반환합니다.")
-    @GetMapping("/me")
-    public ResponseEntity<TeamResponse> getMyTeam(
-            @AuthenticationPrincipal Long userId) {
-        return ResponseEntity.ok(teamService.getMyTeam(userId));
-    }
-
     @Operation(summary = "팀 코드로 검색", description = "팀 코드로 팀을 검색합니다. 가입 전 팀 정보를 미리 확인할 때 사용합니다.")
     @GetMapping("/search")
     public ResponseEntity<TeamResponse> searchByCode(
