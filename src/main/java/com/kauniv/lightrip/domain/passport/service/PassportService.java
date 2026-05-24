@@ -340,8 +340,22 @@ public class PassportService {
 
     // ========== 내 불빛 조회 ==========
     public List<LightResponse> getMyLights(Long userId, BigDecimal minLat, BigDecimal maxLat,
-                                           BigDecimal minLng, BigDecimal maxLng) {
+                                           BigDecimal minLng, BigDecimal maxLng, Long teamId) {
         validateBoundingBox(minLat, maxLat, minLng, maxLng);
+
+        // > teamId가 있으면 팀 모드: 팀 멤버십 검증 후 팀 여권만 BBox 조회. visibility 무시.
+        if (teamId != null) {
+            if (!teamRepository.existsById(teamId)) {
+                throw new BusinessException(ErrorCode.TEAM_NOT_FOUND);
+            }
+            if (!teamMemberRepository.existsByTeam_IdAndUser_Id(teamId, userId)) {
+                throw new BusinessException(ErrorCode.TEAM_NOT_MEMBER);
+            }
+            return passportRepository.findTeamLightsInBounds(teamId, minLat, maxLat, minLng, maxLng)
+                    .stream().map(LightResponse::from).toList();
+        }
+
+        // > teamId 없으면 개인 모드: 본인 여권 전체 visibility 조회.
         List<Visibility> allowed = List.of(
                 Visibility.PUBLIC, Visibility.PRIVATE, Visibility.FRIENDS_ONLY
         );
@@ -355,7 +369,7 @@ public class PassportService {
                                              BigDecimal minLat, BigDecimal maxLat,
                                              BigDecimal minLng, BigDecimal maxLng) {
         validateBoundingBox(minLat, maxLat, minLng, maxLng);
-        if (viewerId.equals(targetUserId)) return getMyLights(viewerId, minLat, maxLat, minLng, maxLng);
+        if (viewerId.equals(targetUserId)) return getMyLights(viewerId, minLat, maxLat, minLng, maxLng, null);
         if (!userRepository.existsById(targetUserId)) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         boolean isFriend = friendRepository.isFriend(viewerId, targetUserId);
         List<Visibility> allowed = isFriend

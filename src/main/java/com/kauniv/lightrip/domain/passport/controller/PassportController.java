@@ -34,7 +34,45 @@ public class PassportController {
     private final PassportService passportService;
 
     @Operation(summary = "여권 등록",
-            description = "방문 기록을 여권으로 등록합니다. 이미지 1~5장 필수. visibility 미입력 시 PUBLIC으로 저장됩니다.")
+            description = """
+                    방문 기록을 여권으로 등록합니다.
+
+                    ### ✅ 필수 항목
+                    | 필드 | 설명 |
+                    |---|---|
+                    | `imageUrls` | 이미지 URL 배열 (1~5장). S3 presigned URL로 업로드 후 받은 CloudFront URL 사용 |
+                    | `content` | 사용자가 최종 작성한 기록 내용 |
+                    | `latitude`, `longitude` | 위·경도 좌표 (소수점 7자리) |
+                    | `address` | 전체 주소 (최대 50자) |
+                    | `visitedAt` | 방문 날짜 (`YYYY-MM-DD`, 오늘 또는 과거만 허용) |
+                    | `category` | 카테고리 enum (CAFE/RESTAURANT/BAR/CULTURE/ACTIVITY/SHOPPING/NATURE/ETC) |
+                    | `districtCategory` | 권역 enum (MAPO, GANGNAM 등 서울 25구 + 경기 31시군) |
+
+                    ### ⚙️ 선택 항목 (생략 가능 / null 허용)
+                    | 필드 | 동작 |
+                    |---|---|
+                    | `visibility` | 미입력 시 **PUBLIC**. (PUBLIC / FRIENDS_ONLY / PRIVATE) |
+                    | `draft` | AI 초안 원본. AI 미사용이면 생략 — 학습 데이터 보존용 |
+                    | `aiCategory` | AI가 분류한 카테고리 초기값 (사용자가 `category`를 바꿔도 보존) |
+                    | `district` | 행정구역 표시명 (예: "마포구"). UI 표시용, 생략 가능 |
+                    | `spaceName` | 위치명 (예: "안녕커피") — 최대 50자 |
+                    | `musicTitle`, `musicArtist` | 함께 듣던 음악 메타. 최대 100자 |
+                    | `teamId` | 팀 여권으로 등록하려면 팀 ID 지정. **개인 여권이면 생략 또는 `null`** (`0` 금지 — TEAM_NOT_FOUND) |
+
+                    ### 🚨 자주 걸리는 에러
+                    | 코드 | 상황 |
+                    |---|---|
+                    | 400 `C001` | enum 오타 (소문자 등) / `visitedAt`이 미래 / 이미지 0장 또는 6장 이상 / 주소 50자 초과 |
+                    | 401 `A001` | Authorization 헤더 누락 |
+                    | 403 `P002` | `teamId` 지정했는데 본인이 그 팀 멤버 아님 |
+                    | 409 `P003` | 같은 `(userId, latitude, longitude, visitedAt)` 조합 중복 |
+
+                    ### 🔁 동작 흐름
+                    1. (선택) AI 초안: `POST /api/v1/ai/draft?imageUrl=...` → `draft`, `aiCategory` 받기
+                    2. 이미지 업로드: `POST /api/v1/images/presigned-url` → presigned URL로 S3 PUT → 받은 CloudFront URL을 `imageUrls`에 담음
+                    3. 본 API 호출: 위 정보를 모아서 등록
+                    4. 등록된 여권의 지역이 **첫 등록**이면 `DistrictCover`도 자동 생성 (첫 이미지가 커버로)
+                    """)
     @PostMapping
     public ApiResponse<PassportResponse> create(
             @AuthenticationPrincipal Long userId,
@@ -163,18 +201,20 @@ public class PassportController {
     }
 
     @Operation(summary = "내 불빛 조회",
-            description = "지도 화면에 표시할 본인 여권 좌표를 Bounding Box 범위 내에서 조회합니다. " +
-                    "모든 visibility 노출.")
+            description = "지도 화면에 표시할 여권 좌표를 Bounding Box 범위 내에서 조회합니다. " +
+                    "teamId 미지정 시 본인 여권(모든 visibility) 조회, " +
+                    "teamId 지정 시 해당 팀 여권(visibility 무시) 조회 — 팀 멤버만 허용.")
     @GetMapping("/lights/me")
     public ApiResponse<List<LightResponse>> getMyLights(
             @AuthenticationPrincipal Long userId,
             @Parameter(description = "최소 위도 (좌하단)") @RequestParam BigDecimal minLat,
             @Parameter(description = "최대 위도 (우상단)") @RequestParam BigDecimal maxLat,
             @Parameter(description = "최소 경도 (좌하단)") @RequestParam BigDecimal minLng,
-            @Parameter(description = "최대 경도 (우상단)") @RequestParam BigDecimal maxLng
+            @Parameter(description = "최대 경도 (우상단)") @RequestParam BigDecimal maxLng,
+            @Parameter(description = "팀 ID (선택) — 지정 시 해당 팀 여권 조회") @RequestParam(required = false) Long teamId
     ) {
         return ApiResponse.success(
-                passportService.getMyLights(userId, minLat, maxLat, minLng, maxLng)
+                passportService.getMyLights(userId, minLat, maxLat, minLng, maxLng, teamId)
         );
     }
 
