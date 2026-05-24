@@ -1,5 +1,6 @@
 package com.kauniv.lightrip.domain.user.controller;
 
+import com.kauniv.lightrip.domain.user.dto.request.CompleteProfileRequest;
 import com.kauniv.lightrip.domain.user.dto.request.UpdateProfileRequest;
 import com.kauniv.lightrip.domain.user.dto.response.MyProfileResponse;
 import com.kauniv.lightrip.domain.user.dto.response.PublicProfileResponse;
@@ -25,6 +26,14 @@ public class UserController {
     public ApiResponse<MyProfileResponse> getMyProfile(
             @AuthenticationPrincipal Long userId) {
         return ApiResponse.success(userService.getMyProfile(userId));
+    }
+
+    @Operation(summary = "온보딩 프로필 설정", description = "카카오 회원가입 후 닉네임, 활동 지역, 한 줄 소개를 초기 설정합니다.")
+    @PatchMapping("/me/onboarding")
+    public ApiResponse<MyProfileResponse> completeOnboarding(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody CompleteProfileRequest request) {
+        return ApiResponse.success(userService.completeOnboarding(userId, request));
     }
 
     @Operation(summary = "내 프로필 편집", description = "닉네임과 프로필 이미지를 수정합니다.")

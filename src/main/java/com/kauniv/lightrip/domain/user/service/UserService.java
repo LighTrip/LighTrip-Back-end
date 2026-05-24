@@ -4,6 +4,7 @@ import com.kauniv.lightrip.domain.friend.repository.FriendRepository;
 import com.kauniv.lightrip.domain.like.repository.LikeRepository;
 import com.kauniv.lightrip.domain.passport.repository.PassportRepository;
 import com.kauniv.lightrip.domain.scrap.repository.ScrapRepository;
+import com.kauniv.lightrip.domain.user.dto.request.CompleteProfileRequest;
 import com.kauniv.lightrip.domain.user.dto.response.MyProfileResponse;
 import com.kauniv.lightrip.domain.user.dto.response.PublicProfileResponse;
 import com.kauniv.lightrip.domain.user.dto.request.UpdateProfileRequest;
@@ -85,6 +86,30 @@ public class UserService {
         }
 
         user.updateProfile(request.getNickname(), request.getProfileImg(), request.getLocation(), request.getBio());
+
+        MyProfileResponse.Stats stats = MyProfileResponse.Stats.builder()
+                .passportCount(passportRepository.countByUser_Id(userId))
+                .districtCount(passportRepository.countDistinctDistrictByUserId(userId))
+                .friendCount(friendRepository.findAllFriends(userId).size())
+                .likeCount(likeRepository.countByUser_Id(userId))
+                .scrapCount(scrapRepository.countByUser_Id(userId))
+                .build();
+
+        return MyProfileResponse.from(user, stats);
+    }
+
+    @Transactional
+    public MyProfileResponse completeOnboarding(Long userId, CompleteProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        if (!user.getNickname().equals(request.getNickname())
+                && userRepository.existsByNickname(request.getNickname())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
+        }
+
+        // profileImg는 온보딩 화면에서 다루지 않으므로 기존 값 유지
+        user.updateProfile(request.getNickname(), user.getProfileImg(), request.getLocation(), request.getBio());
 
         MyProfileResponse.Stats stats = MyProfileResponse.Stats.builder()
                 .passportCount(passportRepository.countByUser_Id(userId))
