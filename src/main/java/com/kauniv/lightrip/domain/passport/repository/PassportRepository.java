@@ -8,6 +8,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.springframework.data.jpa.repository.Query;
 import com.kauniv.lightrip.global.enums.Category;
+import com.kauniv.lightrip.global.enums.Visibility;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.repository.query.Param;
@@ -124,49 +125,6 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
     List<Passport> findAllByIdsForFeed(List<Long> ids);
 
     @Query(value = """
-        SELECT DISTINCT p.*
-        FROM passport p
-        WHERE p.user_id = :targetUserId
-          AND ST_Within(
-              p.location,
-              ST_MakeEnvelope(CAST(:minLng AS float), CAST(:minLat AS float),
-                              CAST(:maxLng AS float), CAST(:maxLat AS float), 4326)
-          )
-          AND p.visibility IN (:visibilities)
-        """, nativeQuery = true)
-    List<Passport> findLightsInBounds(
-            @Param("targetUserId") Long targetUserId,
-            @Param("minLat") BigDecimal minLat,
-            @Param("maxLat") BigDecimal maxLat,
-            @Param("minLng") BigDecimal minLng,
-            @Param("maxLng") BigDecimal maxLng,
-            @Param("visibilities") List<String> visibilities
-    );
-    // > ST_Within: 포인트가 사각형 영역 안에 있는지 확인.
-    // > ST_MakeEnvelope: bounding box 생성 (minLng, minLat, maxLng, maxLat).
-    // > GiST 인덱스 활용으로 기존 BETWEEN 대비 성능 개선.
-    // > visibilities는 List<String>으로 받아서 네이티브 쿼리 IN절에 전달.
-
-    @Query(value = """
-        SELECT DISTINCT p.*
-        FROM passport p
-        WHERE p.team_id = :teamId
-          AND ST_Within(
-              p.location,
-              ST_MakeEnvelope(CAST(:minLng AS float), CAST(:minLat AS float),
-                              CAST(:maxLng AS float), CAST(:maxLat AS float), 4326)
-          )
-        """, nativeQuery = true)
-    List<Passport> findTeamLightsInBounds(
-            @Param("teamId") Long teamId,
-            @Param("minLat") BigDecimal minLat,
-            @Param("maxLat") BigDecimal maxLat,
-            @Param("minLng") BigDecimal minLng,
-            @Param("maxLng") BigDecimal maxLng
-    );
-    // > 팀 여권만 (team_id 필터). visibility 무시 — 팀 내부면 PRIVATE도 노출 (B-1 정책).
-
-    @Query(value = """
         SELECT
             COUNT(*) AS cnt,
             AVG(p.latitude) AS center_lat,
@@ -219,6 +177,48 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
             @Param("cellSize") double cellSize
     );
     // > 팀 여권용 클러스터링 (visibility 무시).
+
+    @Query("""
+        SELECT p FROM Passport p
+        LEFT JOIN FETCH p.images
+        WHERE p.user.id = :userId
+          AND p.visibility IN :visibilities
+          AND p.latitude BETWEEN :minLat AND :maxLat
+          AND p.longitude BETWEEN :minLng AND :maxLng
+          AND (:cursor IS NULL OR p.id < :cursor)
+        ORDER BY p.visitedAt DESC, p.id DESC
+        """)
+    List<Passport> findUserPassportsInBounds(
+            @Param("userId") Long userId,
+            @Param("visibilities") List<Visibility> visibilities,
+            @Param("minLat") BigDecimal minLat,
+            @Param("maxLat") BigDecimal maxLat,
+            @Param("minLng") BigDecimal minLng,
+            @Param("maxLng") BigDecimal maxLng,
+            @Param("cursor") Long cursor,
+            Pageable pageable
+    );
+    // > 클러스터 셀 BBox 안의 여권을 visibility 필터링 후 커서 페이징.
+
+    @Query("""
+        SELECT p FROM Passport p
+        LEFT JOIN FETCH p.images
+        WHERE p.team.id = :teamId
+          AND p.latitude BETWEEN :minLat AND :maxLat
+          AND p.longitude BETWEEN :minLng AND :maxLng
+          AND (:cursor IS NULL OR p.id < :cursor)
+        ORDER BY p.visitedAt DESC, p.id DESC
+        """)
+    List<Passport> findTeamPassportsInBounds(
+            @Param("teamId") Long teamId,
+            @Param("minLat") BigDecimal minLat,
+            @Param("maxLat") BigDecimal maxLat,
+            @Param("minLng") BigDecimal minLng,
+            @Param("maxLng") BigDecimal maxLng,
+            @Param("cursor") Long cursor,
+            Pageable pageable
+    );
+    // > 팀 여권용 클러스터 셀 BBox 페이징 (visibility 무시).
 
     @Query("""
         SELECT p FROM Passport p
