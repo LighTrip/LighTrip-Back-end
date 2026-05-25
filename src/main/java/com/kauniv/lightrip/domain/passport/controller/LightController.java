@@ -34,10 +34,10 @@ public class LightController {
     @GetMapping("/me")
     public ApiResponse<List<LightResponse>> getMyLights(
             @AuthenticationPrincipal Long userId,
-            @Parameter(description = "최소 위도 (좌하단)") @RequestParam BigDecimal minLat,
-            @Parameter(description = "최대 위도 (우상단)") @RequestParam BigDecimal maxLat,
-            @Parameter(description = "최소 경도 (좌하단)") @RequestParam BigDecimal minLng,
-            @Parameter(description = "최대 경도 (우상단)") @RequestParam BigDecimal maxLng,
+            @Parameter(description = "남쪽 경계 위도") @RequestParam BigDecimal minLat,
+            @Parameter(description = "북쪽 경계 위도") @RequestParam BigDecimal maxLat,
+            @Parameter(description = "서쪽 경계 경도") @RequestParam BigDecimal minLng,
+            @Parameter(description = "동쪽 경계 경도") @RequestParam BigDecimal maxLng,
             @Parameter(description = "팀 ID (선택) — 지정 시 해당 팀 여권 조회") @RequestParam(required = false) Long teamId
     ) {
         return ApiResponse.success(
@@ -56,10 +56,10 @@ public class LightController {
     public ApiResponse<List<LightResponse>> getUserLights(
             @AuthenticationPrincipal Long viewerId,
             @Parameter(description = "조회 대상 사용자 ID") @PathVariable Long userId,
-            @Parameter(description = "최소 위도 (좌하단)") @RequestParam BigDecimal minLat,
-            @Parameter(description = "최대 위도 (우상단)") @RequestParam BigDecimal maxLat,
-            @Parameter(description = "최소 경도 (좌하단)") @RequestParam BigDecimal minLng,
-            @Parameter(description = "최대 경도 (우상단)") @RequestParam BigDecimal maxLng
+            @Parameter(description = "남쪽 경계 위도") @RequestParam BigDecimal minLat,
+            @Parameter(description = "북쪽 경계 위도") @RequestParam BigDecimal maxLat,
+            @Parameter(description = "서쪽 경계 경도") @RequestParam BigDecimal minLng,
+            @Parameter(description = "동쪽 경계 경도") @RequestParam BigDecimal maxLng
     ) {
         return ApiResponse.success(
                 passportService.getUserLights(viewerId, userId, minLat, maxLat, minLng, maxLng)
@@ -78,10 +78,10 @@ public class LightController {
     @GetMapping("/cluster")
     public ApiResponse<CursorResponse<PassportListResponse>> getLightCluster(
             @AuthenticationPrincipal Long userId,
-            @Parameter(description = "최소 위도 (셀 좌하단)") @RequestParam BigDecimal minLat,
-            @Parameter(description = "최대 위도 (셀 우상단)") @RequestParam BigDecimal maxLat,
-            @Parameter(description = "최소 경도 (셀 좌하단)") @RequestParam BigDecimal minLng,
-            @Parameter(description = "최대 경도 (셀 우상단)") @RequestParam BigDecimal maxLng,
+            @Parameter(description = "남쪽 경계 위도") @RequestParam BigDecimal minLat,
+            @Parameter(description = "북쪽 경계 위도") @RequestParam BigDecimal maxLat,
+            @Parameter(description = "서쪽 경계 경도") @RequestParam BigDecimal minLng,
+            @Parameter(description = "동쪽 경계 경도") @RequestParam BigDecimal maxLng,
             @Parameter(description = "팀 ID (선택) — 지정 시 팀 여권 조회") @RequestParam(required = false) Long teamId,
             @Parameter(description = "커서 (이전 응답의 nextCursor 값). 첫 요청 시 생략") @RequestParam(required = false) Long cursor,
             @Parameter(description = "한 페이지에 가져올 여권 수 (기본 10)") @RequestParam(defaultValue = "10") int size
