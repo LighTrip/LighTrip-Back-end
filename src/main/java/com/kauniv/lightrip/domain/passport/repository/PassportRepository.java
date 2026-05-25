@@ -166,6 +166,60 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
     );
     // > 팀 여권만 (team_id 필터). visibility 무시 — 팀 내부면 PRIVATE도 노출 (B-1 정책).
 
+    @Query(value = """
+        SELECT
+            COUNT(*) AS cnt,
+            AVG(p.latitude) AS center_lat,
+            AVG(p.longitude) AS center_lng,
+            CASE WHEN COUNT(*) = 1 THEN MIN(p.passport_id) END AS single_id
+        FROM passport p
+        WHERE p.user_id = :targetUserId
+          AND ST_Within(
+              p.location,
+              ST_MakeEnvelope(CAST(:minLng AS float), CAST(:minLat AS float),
+                              CAST(:maxLng AS float), CAST(:maxLat AS float), 4326)
+          )
+          AND p.visibility IN (:visibilities)
+        GROUP BY ST_SnapToGrid(p.location, CAST(:cellSize AS float), CAST(:cellSize AS float))
+        """, nativeQuery = true)
+    List<Object[]> findUserLightClusters(
+            @Param("targetUserId") Long targetUserId,
+            @Param("minLat") BigDecimal minLat,
+            @Param("maxLat") BigDecimal maxLat,
+            @Param("minLng") BigDecimal minLng,
+            @Param("maxLng") BigDecimal maxLng,
+            @Param("visibilities") List<String> visibilities,
+            @Param("cellSize") double cellSize
+    );
+    // > ST_SnapToGrid로 location을 cellSize 격자에 스냅 → GROUP BY로 같은 셀끼리 묶음.
+    // > 셀 내 1건이면 single_id에 passport_id 보존 (서비스에서 단일 응답으로 매핑).
+    // > 반환: [cnt(BIGINT), center_lat(numeric), center_lng(numeric), single_id(BIGINT or null)]
+
+    @Query(value = """
+        SELECT
+            COUNT(*) AS cnt,
+            AVG(p.latitude) AS center_lat,
+            AVG(p.longitude) AS center_lng,
+            CASE WHEN COUNT(*) = 1 THEN MIN(p.passport_id) END AS single_id
+        FROM passport p
+        WHERE p.team_id = :teamId
+          AND ST_Within(
+              p.location,
+              ST_MakeEnvelope(CAST(:minLng AS float), CAST(:minLat AS float),
+                              CAST(:maxLng AS float), CAST(:maxLat AS float), 4326)
+          )
+        GROUP BY ST_SnapToGrid(p.location, CAST(:cellSize AS float), CAST(:cellSize AS float))
+        """, nativeQuery = true)
+    List<Object[]> findTeamLightClusters(
+            @Param("teamId") Long teamId,
+            @Param("minLat") BigDecimal minLat,
+            @Param("maxLat") BigDecimal maxLat,
+            @Param("minLng") BigDecimal minLng,
+            @Param("maxLng") BigDecimal maxLng,
+            @Param("cellSize") double cellSize
+    );
+    // > 팀 여권용 클러스터링 (visibility 무시).
+
     @Query("""
         SELECT p FROM Passport p
         LEFT JOIN FETCH p.images

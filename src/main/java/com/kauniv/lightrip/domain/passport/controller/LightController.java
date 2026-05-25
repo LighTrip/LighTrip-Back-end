@@ -22,9 +22,15 @@ public class LightController {
     private final PassportService passportService;
 
     @Operation(summary = "내 불빛 조회",
-            description = "지도 화면에 표시할 여권 좌표를 Bounding Box 범위 내에서 조회합니다. " +
-                    "teamId 미지정 시 본인 여권(모든 visibility) 조회, " +
-                    "teamId 지정 시 해당 팀 여권(visibility 무시) 조회 — 팀 멤버만 허용.")
+            description = """
+                    지도 화면에 표시할 여권 좌표를 Bounding Box 범위 내에서 조회합니다.
+
+                    - `teamId` 미지정: 본인 여권(모든 visibility) 조회
+                    - `teamId` 지정: 해당 팀 여권(visibility 무시) — 팀 멤버만 허용
+                    - `zoom` 16 이상: 기존 개별 좌표 응답
+                    - `zoom` 16 미만: 격자 단위 클러스터링 응답 (`isCluster=true`, `count`, `centerLatitude/Longitude`)
+                    - 셀 내 여권이 1개면 단일 응답으로 반환 (`isCluster=false`, ID·디테일 포함)
+                    """)
     @GetMapping("/me")
     public ApiResponse<List<LightResponse>> getMyLights(
             @AuthenticationPrincipal Long userId,
@@ -32,16 +38,23 @@ public class LightController {
             @Parameter(description = "최대 위도 (우상단)") @RequestParam BigDecimal maxLat,
             @Parameter(description = "최소 경도 (좌하단)") @RequestParam BigDecimal minLng,
             @Parameter(description = "최대 경도 (우상단)") @RequestParam BigDecimal maxLng,
+            @Parameter(description = "지도 줌 레벨 (0~22). 16 이상이면 개별 좌표, 미만이면 클러스터링. 기본 16")
+            @RequestParam(defaultValue = "16") int zoom,
             @Parameter(description = "팀 ID (선택) — 지정 시 해당 팀 여권 조회") @RequestParam(required = false) Long teamId
     ) {
         return ApiResponse.success(
-                passportService.getMyLights(userId, minLat, maxLat, minLng, maxLng, teamId)
+                passportService.getMyLights(userId, minLat, maxLat, minLng, maxLng, zoom, teamId)
         );
     }
 
     @Operation(summary = "특정 사용자 불빛 조회",
-            description = "지정된 사용자가 작성한 여권 좌표를 Bounding Box 범위 내에서 조회합니다. " +
-                    "PUBLIC 노출 + 친구 관계인 경우 FRIENDS_ONLY 포함.")
+            description = """
+                    지정된 사용자가 작성한 여권 좌표를 Bounding Box 범위 내에서 조회합니다.
+
+                    - PUBLIC 노출 + 친구 관계인 경우 FRIENDS_ONLY 포함
+                    - `zoom` 16 이상: 기존 개별 좌표 응답
+                    - `zoom` 16 미만: 격자 단위 클러스터링 응답
+                    """)
     @GetMapping("/{userId}")
     public ApiResponse<List<LightResponse>> getUserLights(
             @AuthenticationPrincipal Long viewerId,
@@ -49,10 +62,12 @@ public class LightController {
             @Parameter(description = "최소 위도 (좌하단)") @RequestParam BigDecimal minLat,
             @Parameter(description = "최대 위도 (우상단)") @RequestParam BigDecimal maxLat,
             @Parameter(description = "최소 경도 (좌하단)") @RequestParam BigDecimal minLng,
-            @Parameter(description = "최대 경도 (우상단)") @RequestParam BigDecimal maxLng
+            @Parameter(description = "최대 경도 (우상단)") @RequestParam BigDecimal maxLng,
+            @Parameter(description = "지도 줌 레벨 (0~22). 16 이상이면 개별 좌표, 미만이면 클러스터링. 기본 16")
+            @RequestParam(defaultValue = "16") int zoom
     ) {
         return ApiResponse.success(
-                passportService.getUserLights(viewerId, userId, minLat, maxLat, minLng, maxLng)
+                passportService.getUserLights(viewerId, userId, minLat, maxLat, minLng, maxLng, zoom)
         );
     }
 }
