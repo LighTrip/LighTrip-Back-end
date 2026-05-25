@@ -253,6 +253,19 @@ public class PassportService {
         return CursorResponse.of(passports.stream().map(PassportListResponse::from).toList(), hasNext, nextCursor);
     }
 
+    // ========== 지역별 내 여권 상세 목록 조회 ==========
+    public CursorResponse<PassportResponse> getMyPassportDetailsByDistrict(Long userId,
+                                                                          District districtCategory,
+                                                                          Long cursor, int size) {
+        List<Passport> passports = (cursor == null)
+                ? passportRepository.findMyPassportsFirst(userId, null, districtCategory, PageRequest.of(0, size + 1))
+                : passportRepository.findMyPassportsAfterCursor(userId, cursor, null, districtCategory, PageRequest.of(0, size + 1));
+        boolean hasNext = passports.size() > size;
+        if (hasNext) passports = passports.subList(0, size);
+        Long nextCursor = hasNext ? passports.get(passports.size() - 1).getId() : null;
+        return CursorResponse.of(passports.stream().map(PassportResponse::from).toList(), hasNext, nextCursor);
+    }
+
     // ========== 내 여권 통계 조회 ==========
     public PassportStatsResponse getMyStats(Long userId) {
         return new PassportStatsResponse(
