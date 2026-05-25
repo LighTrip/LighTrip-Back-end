@@ -340,11 +340,11 @@ public class PassportService {
 
     // ========== 내 불빛 조회 ==========
     public List<LightResponse> getMyLights(Long userId, BigDecimal minLat, BigDecimal maxLat,
-                                           BigDecimal minLng, BigDecimal maxLng, int zoom, Long teamId) {
+                                           BigDecimal minLng, BigDecimal maxLng, Long teamId) {
         validateBoundingBox(minLat, maxLat, minLng, maxLng);
-        Double cellSize = cellSizeForZoom(zoom);
+        double cellSize = cellSizeForBBox(minLng, maxLng);
 
-        // > teamId가 있으면 팀 모드: 팀 멤버십 검증 후 팀 여권만 BBox 조회. visibility 무시.
+        // > teamId가 있으면 팀 모드: 팀 멤버십 검증 후 팀 여권만 클러스터링. visibility 무시.
         if (teamId != null) {
             if (!teamRepository.existsById(teamId)) {
                 throw new BusinessException(ErrorCode.TEAM_NOT_FOUND);
@@ -352,23 +352,14 @@ public class PassportService {
             if (!teamMemberRepository.existsByTeam_IdAndUser_Id(teamId, userId)) {
                 throw new BusinessException(ErrorCode.TEAM_NOT_MEMBER);
             }
-            if (cellSize == null) {
-                return passportRepository.findTeamLightsInBounds(teamId, minLat, maxLat, minLng, maxLng)
-                        .stream().map(LightResponse::from).toList();
-            }
             return mapClusterRows(passportRepository.findTeamLightClusters(
                     teamId, minLat, maxLat, minLng, maxLng, cellSize));
         }
 
-        // > teamId 없으면 개인 모드: 본인 여권 전체 visibility 조회.
+        // > teamId 없으면 개인 모드: 본인 여권 전체 visibility 클러스터링.
         List<Visibility> allowed = List.of(
                 Visibility.PUBLIC, Visibility.PRIVATE, Visibility.FRIENDS_ONLY
         );
-        if (cellSize == null) {
-            return passportRepository.findLightsInBounds(userId, minLat, maxLat, minLng, maxLng,
-                            toStringList(allowed))
-                    .stream().map(LightResponse::from).toList();
-        }
         return mapClusterRows(passportRepository.findUserLightClusters(
                 userId, minLat, maxLat, minLng, maxLng, toStringList(allowed), cellSize));
     }
@@ -376,10 +367,10 @@ public class PassportService {
     // ========== 특정 사용자 불빛 조회 ==========
     public List<LightResponse> getUserLights(Long viewerId, Long targetUserId,
                                              BigDecimal minLat, BigDecimal maxLat,
-                                             BigDecimal minLng, BigDecimal maxLng, int zoom) {
+                                             BigDecimal minLng, BigDecimal maxLng) {
         validateBoundingBox(minLat, maxLat, minLng, maxLng);
         if (viewerId.equals(targetUserId)) {
-            return getMyLights(viewerId, minLat, maxLat, minLng, maxLng, zoom, null);
+            return getMyLights(viewerId, minLat, maxLat, minLng, maxLng, null);
         }
         if (!userRepository.existsById(targetUserId)) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         boolean isFriend = friendRepository.isFriend(viewerId, targetUserId);
@@ -387,24 +378,16 @@ public class PassportService {
                 ? List.of(Visibility.PUBLIC, Visibility.FRIENDS_ONLY)
                 : List.of(Visibility.PUBLIC);
 
-        Double cellSize = cellSizeForZoom(zoom);
-        if (cellSize == null) {
-            return passportRepository.findLightsInBounds(targetUserId, minLat, maxLat, minLng, maxLng,
-                            toStringList(allowed))
-                    .stream().map(LightResponse::from).toList();
-        }
+        double cellSize = cellSizeForBBox(minLng, maxLng);
         return mapClusterRows(passportRepository.findUserLightClusters(
                 targetUserId, minLat, maxLat, minLng, maxLng, toStringList(allowed), cellSize));
     }
 
-    // ========== 줌 레벨 → 셀 크기(degree) 매핑 ==========
-    // > zoom 16 이상이면 null 반환 — 클러스터링 안 함(기존 개별 응답 경로).
-    private static Double cellSizeForZoom(int zoom) {
-        if (zoom >= 16) return null;
-        if (zoom >= 13) return 0.001;
-        if (zoom >= 10) return 0.01;
-        if (zoom >= 6)  return 0.1;
-        return 1.0;
+    // ========== BBox 폭 → 셀 크기(degree) 자동 계산 ==========
+    // > 화면 폭의 1/50을 한 셀로 — 줌과 무관하게 항상 50칸 안팎의 격자로 클러스터링.
+    // > 셀 내 1건이면 mapClusterRows에서 자동으로 단일 응답으로 떨어지므로 임계값 분기 불필요.
+    private static double cellSizeForBBox(BigDecimal minLng, BigDecimal maxLng) {
+        return maxLng.subtract(minLng).doubleValue() / 50.0;
     }
 
     // ========== 클러스터링 쿼리 결과 → LightResponse 매핑 ==========
@@ -439,6 +422,40 @@ public class PassportService {
         if (o instanceof BigDecimal bd) return bd;
         if (o instanceof Number n) return BigDecimal.valueOf(n.doubleValue());
         return null;
+    }
+
+    // ========== 클러스터 셀 상세 리스트 ==========
+    public CursorResponse<PassportListResponse> getLightCluster(
+            Long userId, BigDecimal minLat, BigDecimal maxLat,
+            BigDecimal minLng, BigDecimal maxLng, Long teamId,
+            Long cursor, int size) {
+        validateBoundingBox(minLat, maxLat, minLng, maxLng);
+
+        List<Passport> passports;
+        if (teamId != null) {
+            if (!teamRepository.existsById(teamId)) {
+                throw new BusinessException(ErrorCode.TEAM_NOT_FOUND);
+            }
+            if (!teamMemberRepository.existsByTeam_IdAndUser_Id(teamId, userId)) {
+                throw new BusinessException(ErrorCode.TEAM_NOT_MEMBER);
+            }
+            passports = passportRepository.findTeamPassportsInBounds(
+                    teamId, minLat, maxLat, minLng, maxLng, cursor, PageRequest.of(0, size + 1));
+        } else {
+            List<Visibility> allowed = List.of(
+                    Visibility.PUBLIC, Visibility.PRIVATE, Visibility.FRIENDS_ONLY
+            );
+            passports = passportRepository.findUserPassportsInBounds(
+                    userId, allowed, minLat, maxLat, minLng, maxLng, cursor, PageRequest.of(0, size + 1));
+        }
+
+        boolean hasNext = passports.size() > size;
+        if (hasNext) passports = passports.subList(0, size);
+        Long nextCursor = hasNext ? passports.get(passports.size() - 1).getId() : null;
+        return CursorResponse.of(
+                passports.stream().map(PassportListResponse::from).toList(),
+                hasNext, nextCursor
+        );
     }
 
     private void validateBoundingBox(BigDecimal minLat, BigDecimal maxLat,
