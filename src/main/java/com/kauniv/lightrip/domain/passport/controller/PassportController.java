@@ -180,6 +180,29 @@ public class PassportController {
         return ApiResponse.success(passportService.getMyPassports(userId, category, null, cursor, size));
     }
 
+    @Operation(summary = "지역별 내 여권 상세 조회",
+            description = """
+                    특정 지역(districtCategory)의 내 여권 상세 정보를 커서 기반으로 페이징 조회합니다.
+
+                    - 정렬: 방문일(visitedAt) 내림차순, 동일 시 ID 내림차순
+                    - 페이지 크기: 기본 10
+                    - 응답: 여권 상세 전체 필드 (이미지/본문/좌표/음악/도장 등 `PassportResponse`)
+                    - 첫 요청: `cursor` 생략, 다음 페이지: 이전 응답의 `nextCursor` 사용
+                    - 잘못된 districtCategory 값 입력 시 400을 반환합니다.
+                    """)
+    @GetMapping("/districts/{districtCategory}")
+    public ApiResponse<CursorResponse<PassportResponse>> getMyPassportDetailsByDistrict(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "지역 카테고리 (MAPO, GANGNAM, YONGSAN 등)")
+            @PathVariable District districtCategory,
+            @Parameter(description = "커서 (이전 응답의 nextCursor 값). 첫 요청 시 생략") @RequestParam(required = false) Long cursor,
+            @Parameter(description = "한 페이지에 가져올 여권 수 (기본값: 10)") @RequestParam(defaultValue = "10") int size
+    ) {
+        return ApiResponse.success(
+                passportService.getMyPassportDetailsByDistrict(userId, districtCategory, cursor, size)
+        );
+    }
+
     @Operation(summary = "릴스형 여권 피드 조회",
             description = "다른 사용자의 PUBLIC 여권을 인기순으로 조회합니다. 카테고리/지역/위치 필터 지원, 커서 기반 무한스크롤.")
     @GetMapping("/feed")
