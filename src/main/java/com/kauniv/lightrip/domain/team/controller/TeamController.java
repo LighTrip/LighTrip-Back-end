@@ -2,7 +2,6 @@ package com.kauniv.lightrip.domain.team.controller;
 
 import com.kauniv.lightrip.domain.team.dto.request.TeamCreateRequest;
 import com.kauniv.lightrip.domain.team.dto.request.TeamJoinRequest;
-import com.kauniv.lightrip.domain.team.dto.response.TeamMapResponse;
 import com.kauniv.lightrip.domain.team.dto.response.TeamMemberResponse;
 import com.kauniv.lightrip.domain.team.dto.response.TeamResponse;
 import com.kauniv.lightrip.domain.team.service.TeamService;
@@ -61,14 +60,6 @@ public class TeamController {
     public ResponseEntity<List<TeamMemberResponse>> getMembers(
             @Parameter(description = "조회할 팀의 ID") @PathVariable Long teamId) {
         return ResponseEntity.ok(teamService.getMembers(teamId));
-    }
-
-    @Operation(summary = "팀 공유 지도 조회", description = "팀원들이 등록한 여권의 좌표를 조회합니다. 팀 멤버만 조회 가능합니다.")
-    @GetMapping("/{teamId}/map")
-    public ResponseEntity<List<TeamMapResponse>> getTeamMap(
-            @AuthenticationPrincipal Long userId,
-            @Parameter(description = "조회할 팀의 ID") @PathVariable Long teamId) {
-        return ResponseEntity.ok(teamService.getTeamMap(userId, teamId));
     }
 
     @Operation(summary = "팀 탈퇴", description = "팀에서 탈퇴합니다. LEADER는 탈퇴할 수 없습니다.")
