@@ -1,5 +1,5 @@
 -- =============================================================================
--- LighTrip 더미 데이터 롤백 (Issue #78)
+-- LighTrip 더미 데이터 롤백 (Issue #102)
 -- 목적     : dummy_seed.sql 로 삽입한 데이터 전체 제거
 -- 식별자   : nickname LIKE 'dummy_user_%' 인 유저 + 그에 연결된 모든 데이터
 -- 안전성   : 트랜잭션 + ON_ERROR_STOP 으로 실패 시 전체 롤백
@@ -73,7 +73,15 @@ DELETE FROM friend
 WHERE request_id IN (SELECT user_id FROM users WHERE nickname LIKE 'dummy_user_%')
    OR receiver_id IN (SELECT user_id FROM users WHERE nickname LIKE 'dummy_user_%');
 
--- 8. users
+-- 8. team_member (더미팀 소속 + 더미 유저 소속 양쪽 모두)
+DELETE FROM team_member
+WHERE team_id IN (SELECT team_id FROM team WHERE team_name LIKE '더미팀_%')
+   OR user_id IN (SELECT user_id FROM users WHERE nickname LIKE 'dummy_user_%');
+
+-- 9. team
+DELETE FROM team WHERE team_name LIKE '더미팀_%';
+
+-- 10. users
 DELETE FROM users WHERE nickname LIKE 'dummy_user_%';
 
 -- 결과 확인
