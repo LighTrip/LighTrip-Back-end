@@ -2,7 +2,6 @@ package com.kauniv.lightrip.domain.team.service;
 
 import com.kauniv.lightrip.domain.team.dto.request.TeamCreateRequest;
 import com.kauniv.lightrip.domain.team.dto.request.TeamJoinRequest;
-import com.kauniv.lightrip.domain.team.dto.response.TeamMapResponse;
 import com.kauniv.lightrip.domain.team.dto.response.TeamMemberResponse;
 import com.kauniv.lightrip.domain.team.dto.response.TeamResponse;
 import com.kauniv.lightrip.domain.team.entity.Team;
@@ -11,7 +10,6 @@ import com.kauniv.lightrip.domain.team.repository.TeamMemberRepository;
 import com.kauniv.lightrip.domain.team.repository.TeamRepository;
 import com.kauniv.lightrip.domain.user.entity.User;
 import com.kauniv.lightrip.domain.user.repository.UserRepository;
-import com.kauniv.lightrip.domain.passport.repository.PassportRepository;
 import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -30,7 +28,6 @@ public class TeamService {
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final UserRepository userRepository;
-    private final PassportRepository passportRepository;
 
     @Transactional
     public TeamResponse create(Long userId, TeamCreateRequest req) {
@@ -95,24 +92,6 @@ public class TeamService {
 
         return teamMemberRepository.findAllByTeam_Id(teamId).stream()
                 .map(TeamMemberResponse::from)
-                .collect(Collectors.toList());
-    }
-
-    public List<TeamMapResponse> getTeamMap(Long userId, Long teamId) {
-        teamRepository.findById(teamId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND));
-
-        if (!teamMemberRepository.existsByTeam_IdAndUser_Id(teamId, userId)) {
-            throw new BusinessException(ErrorCode.TEAM_NOT_MEMBER);
-        }
-
-        return passportRepository.findAllByTeam_Id(teamId).stream()
-                .map(p -> new TeamMapResponse(
-                        p.getUser().getId(),
-                        p.getUser().getNickname(),
-                        p.getLatitude(),
-                        p.getLongitude()
-                ))
                 .collect(Collectors.toList());
     }
 
