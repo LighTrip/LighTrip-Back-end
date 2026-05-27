@@ -8,6 +8,13 @@
 --
 -- ⚠️ prod 환경에서 실행 시 사고 위험 — 반드시 RDS snapshot 후 실행
 -- =============================================================================
+-- [2026-05-27] 배포 서버 실제 실행 쿼리 (TRUNCATE 방식으로 전체 초기화)
+--   BEGIN;
+--   TRUNCATE TABLE passport_stamp, passport_image, likes, scrap,
+--                  district_cover, ranking, passport, team_member,
+--                  friend, auth, users, team CASCADE;
+--   COMMIT;
+-- =============================================================================
 
 BEGIN;
 
