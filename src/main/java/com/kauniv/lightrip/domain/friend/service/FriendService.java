@@ -148,17 +148,7 @@ public class FriendService {
         User user = userRepository.findByFriendCode(friendCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        return new FriendResponse(
-                null,
-                user.getId(),
-                user.getNickname(),
-                user.getProfileImg(),
-                user.getFriendCode(),
-                null,
-                null,
-                null,
-                null
-        );
+        return FriendResponse.ofUser(user, null, null);
     }
 
     public List<FriendPassportResponse> getFriendPassports(Long currentUserId,
