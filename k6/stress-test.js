@@ -1,8 +1,9 @@
 import http from 'k6/http';
-import { check, sleep } from 'k6';
+import { check } from 'k6';
 import { Rate, Trend } from 'k6/metrics';
 
-// > 커스텀 메트릭: API별 응답시간을 따로 추적해 캐싱 전후 비교 시 항목별 수치 확인
+// > 스트레스 테스트: sleep 없이 VU를 단계적으로 올려 시스템 한계점(임계선) 탐색
+// > t3.small + RDS Free Tier 기준 HikariCP 기본 pool(10) 포화 → DB 병목 지점 확인
 const errorRate      = new Rate('errors');
 const feedTrend      = new Trend('feed_duration',      true);
 const rankingTrend   = new Trend('ranking_duration',   true);
@@ -12,11 +13,9 @@ const lightsTrend    = new Trend('lights_duration',    true);
 
 const BASE_URL = 'https://dev.lightrip.cloud';
 
-// > DB 실제 user_id 범위: 1~305 (305명)
-// > VU 50개가 각자 다른 userId 사용 → 실제 트래픽 패턴에 근접
+// > user_id 범위 1~305 — VU 수가 305를 초과해도 mod 연산으로 순환
 const USER_IDS = Array.from({ length: 305 }, (_, i) => i + 1);
 
-// > 서울 기준 Bounding Box — DB 내 서울 범위 여권 5,907개 커버
 const BBOX = {
     minLat: 37.4,
     maxLat: 37.7,
@@ -24,34 +23,44 @@ const BBOX = {
     maxLng: 127.2,
 };
 
-// > 부하 테스트 옵션
-// > stages: 30초 램프업 → 1분 유지 → 20초 램프다운, 총 VU 50명
-// > thresholds: 캐싱 Before에서는 초과해도 무방 — After에서 통과가 목표
+// > 스트레스 테스트 stages:
+// >   25 → 50 → 75 → 100 → 0 으로 단계 상승 (Grafana Cloud k6 무료 플랜 최대 100 VU)
+// >   sleep 없이 VU당 RPS 극대화 — 100 VU × 최대 RPS ≈ 부하 테스트 500 VU 수준 효과
+// >   각 단계 1분 유지 — 어느 구간에서 에러율/응답시간이 급등하는지 확인
+// > thresholds: abortOnFail=true 로 에러율 30% 초과 시 조기 종료 (서버 보호)
 export const options = {
     scenarios: {
-        load_test: {
+        stress_test: {
             executor: 'ramping-vus',
             startVUs: 0,
             stages: [
-                { duration: '30s', target: 50 },
-                { duration: '1m',  target: 50 },
-                { duration: '20s', target: 0  },
+                { duration: '30s', target: 25  },   // 워밍업
+                { duration: '1m',  target: 25  },   // 기준 확인 (부하 테스트 절반)
+                { duration: '30s', target: 50  },
+                { duration: '1m',  target: 50  },   // 부하 테스트 동일 VU, sleep 없음
+                { duration: '30s', target: 75  },
+                { duration: '1m',  target: 75  },
+                { duration: '30s', target: 100 },
+                { duration: '1m',  target: 100 },   // 최대 — 여기서 한계점 노출 예상
+                { duration: '30s', target: 0   },   // 램프다운
             ],
+            gracefulRampDown: '10s',
         },
     },
     thresholds: {
-        errors:             ['rate<0.05'],
-        http_req_duration:  ['p(95)<3000'],
-        ranking_duration:   ['p(95)<500'],
-        stats_duration:     ['p(95)<1000'],
-        feed_duration:      ['p(95)<3000'],
-        districts_duration: ['p(95)<1000'],
-        lights_duration:    ['p(95)<1500'],
+        // > 에러율 30% 초과 시 즉시 중단 — 서버가 이미 포화 상태, 더 올릴 필요 없음
+        errors: [{ threshold: 'rate<0.30', abortOnFail: true }],
+        // > 응답시간 threshold는 느슨하게 설정 — 한계점 도달 전에 중단되지 않도록
+        http_req_duration:  ['p(95)<10000'],
+        ranking_duration:   ['p(95)<5000'],
+        stats_duration:     ['p(95)<5000'],
+        feed_duration:      ['p(95)<10000'],
+        districts_duration: ['p(95)<5000'],
+        lights_duration:    ['p(95)<5000'],
     },
 };
 
-// > setup(): 테스트 시작 전 1회 실행. USER_IDS 전체 accessToken 발급 후 공유
-// > VU마다 다른 userId를 써야 DB 조회 패턴이 실제 트래픽에 가까워짐
+// > setup(): 부하 테스트와 동일하게 305명 전체 토큰 발급
 export function setup() {
     const tokens = {};
 
@@ -74,8 +83,8 @@ export function setup() {
     return { tokens };
 }
 
-// > 메인 시나리오: __ITER % 5로 API를 순환 호출해 고른 분산 유지 (각 20%)
-// > sleep(1): 실제 앱 사용 패턴 모사
+// > sleep 없음: VU가 응답 받는 즉시 다음 요청 — RPS 극대화해 DB 커넥션 풀 포화 유도
+// > __ITER % 5 로 API 고른 분산 유지
 export default function (data) {
     const userId = USER_IDS[(__VU - 1) % USER_IDS.length];
     const token  = data.tokens[userId];
@@ -98,11 +107,9 @@ export default function (data) {
         case 4: testLights(headers);    break;
     }
 
-    sleep(1);
+    // > sleep 없음 — 의도적으로 제거. 부하 테스트(load-test.js)와의 핵심 차이점
 }
 
-// > 전체 주간 랭킹 — 캐싱 효과 가장 큰 API. 모든 VU가 동일 결과 조회
-// > 현재 최근 7일 likes 2,121개 → 랭킹 집계 쿼리 실제 동작
 function testRanking(headers) {
     const res = http.get(`${BASE_URL}/api/v1/rankings/total`, { headers });
     rankingTrend.add(res.timings.duration);
@@ -110,8 +117,6 @@ function testRanking(headers) {
     errorRate.add(res.status !== 200);
 }
 
-// > 내 여권 통계 — COUNT 쿼리 3개 (여권/좋아요/스크랩 수)
-// > 10,020개 여권 + 18,000개 likes + 9,000개 scrap 기준 집계
 function testStats(headers) {
     const res = http.get(`${BASE_URL}/api/v1/passports/stats/me`, { headers });
     statsTrend.add(res.timings.duration);
@@ -119,8 +124,6 @@ function testStats(headers) {
     errorRate.add(res.status !== 200);
 }
 
-// > 피드 조회 — PostGIS 공간쿼리 + 인기순 정렬, 단일 요청에 DB 쿼리 5개
-// > 서울 시청 기준 반경 5km, 서울 범위 여권 5,907개 대상 쿼리
 function testFeed(headers) {
     const res = http.get(
         `${BASE_URL}/api/v1/passports/feed?latitude=37.5665&longitude=126.9780&radius=5&size=10`,
@@ -131,7 +134,6 @@ function testFeed(headers) {
     errorRate.add(res.status !== 200);
 }
 
-// > 내 기록 지역 목록 — 지역별 COUNT 집계 + 대표 이미지 조회
 function testDistricts(headers) {
     const res = http.get(`${BASE_URL}/api/v1/passports/districts/me`, { headers });
     districtsTrend.add(res.timings.duration);
@@ -139,8 +141,6 @@ function testDistricts(headers) {
     errorRate.add(res.status !== 200);
 }
 
-// > 내 불빛 조회 — 서울 전체 Bounding Box 기준 PostGIS 공간 필터
-// > 서울 범위(37.4~37.7, 126.8~127.2) 여권 5,907개 대상
 function testLights(headers) {
     const url = `${BASE_URL}/api/v1/lights/me`
         + `?minLat=${BBOX.minLat}&maxLat=${BBOX.maxLat}`
