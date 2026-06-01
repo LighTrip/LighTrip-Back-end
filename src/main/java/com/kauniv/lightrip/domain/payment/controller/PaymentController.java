@@ -26,10 +26,9 @@ public class PaymentController {
             description = """
                     프론트가 토스 결제창을 호출하기 직전에 호출합니다.
 
-                    ### 선택 가능 상품 (productType — 1개월 / 3개월 / 12개월 중 택 1)
-                    - `PREMIUM_1MONTH` : 프리미엄 1개월 (9,900원)
-                    - `PREMIUM_3MONTH` : 프리미엄 3개월 (27,000원)
-                    - `PREMIUM_1YEAR`  : 프리미엄 12개월(1년) (99,000원)
+                    ### 선택 가능 상품 (productType — 월 / 연 중 택 1)
+                    - `PREMIUM_1MONTH` : 프리미엄 1개월 (4,900원)
+                    - `PREMIUM_1YEAR`  : 프리미엄 1년(12개월) (49,000원)
 
                     ### 동작
                     1. `productType`을 받아 백엔드의 가격 정책(ProductType enum)에서 `amount`를 결정

@@ -12,7 +12,7 @@ public record PaymentOrderResponse(
         @Schema(description = "주문을 생성한 사용자 ID", example = "1")
         Long userId,
 
-        @Schema(description = "결제 금액 (KRW 원 단위)", example = "9900")
+        @Schema(description = "결제 금액 (KRW 원 단위)", example = "4900")
         Long amount,
 
         @Schema(description = "주문명 (사용자에게 노출되는 상품명)", example = "프리미엄 1개월")

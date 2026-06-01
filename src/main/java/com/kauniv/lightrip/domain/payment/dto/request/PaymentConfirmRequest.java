@@ -26,7 +26,7 @@ public record PaymentConfirmRequest(
         @Schema(
                 description = "[필수] 결제 금액 (KRW 원 단위). DB에 저장된 금액과 일치해야 승인됨 — 위변조 검증용",
                 requiredMode = Schema.RequiredMode.REQUIRED,
-                example = "9900"
+                example = "4900"
         )
         @NotNull(message = "amount는 필수입니다.")
         Long amount
