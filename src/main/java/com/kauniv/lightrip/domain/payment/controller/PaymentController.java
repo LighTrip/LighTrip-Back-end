@@ -4,6 +4,7 @@ import com.kauniv.lightrip.domain.payment.dto.request.PaymentConfirmRequest;
 import com.kauniv.lightrip.domain.payment.dto.request.PaymentOrderRequest;
 import com.kauniv.lightrip.domain.payment.dto.response.PaymentConfirmResponse;
 import com.kauniv.lightrip.domain.payment.dto.response.PaymentOrderResponse;
+import com.kauniv.lightrip.domain.payment.dto.response.PremiumStatusResponse;
 import com.kauniv.lightrip.domain.payment.service.PaymentService;
 import com.kauniv.lightrip.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -62,5 +63,25 @@ public class PaymentController {
             @Valid @RequestBody PaymentConfirmRequest request
     ) {
         return ApiResponse.success("결제가 완료되었습니다.", paymentService.confirmPayment(userId, request));
+    }
+
+    @Operation(summary = "내 프리미엄 이용권 상태 조회",
+            description = """
+                    로그인한 사용자의 현재 프리미엄 이용권 상태를 반환합니다.
+
+                    ### 동작
+                    - 별도 구독 테이블 없이, 완료(COMPLETED)된 결제 내역만으로 만료일을 즉석 계산
+                    - 여러 번 구매 시 기간이 누적(스탁)됨 — 이용권이 남은 상태에서 추가 구매하면 끝에 이어붙임
+                    - `premium` : 현재 이용 중 여부 / `expiresAt` : 만료 시각 / `daysLeft` : 남은 일수
+
+                    ### 참고
+                    - 결제 이력이 없으면 `premium=false`, `expiresAt=null`
+                    - 이미 만료된 경우 `premium=false`이며 `expiresAt`은 과거 시각일 수 있음
+                    """)
+    @GetMapping("/me/premium")
+    public ApiResponse<PremiumStatusResponse> getPremiumStatus(
+            @AuthenticationPrincipal Long userId
+    ) {
+        return ApiResponse.success(paymentService.getPremiumStatus(userId));
     }
 }

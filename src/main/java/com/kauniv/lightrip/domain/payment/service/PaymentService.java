@@ -4,6 +4,7 @@ import com.kauniv.lightrip.domain.payment.dto.request.PaymentConfirmRequest;
 import com.kauniv.lightrip.domain.payment.dto.request.PaymentOrderRequest;
 import com.kauniv.lightrip.domain.payment.dto.response.PaymentConfirmResponse;
 import com.kauniv.lightrip.domain.payment.dto.response.PaymentOrderResponse;
+import com.kauniv.lightrip.domain.payment.dto.response.PremiumStatusResponse;
 import com.kauniv.lightrip.domain.payment.dto.response.TossConfirmResponse;
 import com.kauniv.lightrip.domain.payment.entity.Payment;
 import com.kauniv.lightrip.domain.payment.repository.PaymentRepository;
@@ -19,6 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -113,5 +117,30 @@ public class PaymentService {
                 ))
                 .retrieve()
                 .body(TossConfirmResponse.class);
+    }
+
+    // ========== 현재 프리미엄 이용권 상태 조회 ==========
+    // > 별도 구독/만료 테이블 없이 COMPLETED 결제 내역만으로 만료일을 즉석 계산.
+    //   payment 테이블이 단일 진실 공급원 — 만료일이 결제와 어긋날 일이 없음.
+    //
+    // > 누적(스탁) 규칙: 결제를 승인 시각 오름차순으로 훑으며,
+    //   이미 이용권이 남아있으면(expiry > 승인시각) 그 끝에 기간을 이어붙이고,
+    //   끊겼으면(만료 후 재구매) 승인 시각부터 새로 시작한다.
+    public PremiumStatusResponse getPremiumStatus(Long userId) {
+        List<Payment> completed = paymentRepository
+                .findByUser_IdAndStatusOrderByUpdatedAtAsc(userId, Payment.PaymentStatus.COMPLETED);
+
+        LocalDateTime expiry = null;
+        for (Payment p : completed) {
+            LocalDateTime paidAt = p.getUpdatedAt(); // 승인 완료 시각
+            LocalDateTime base = (expiry != null && expiry.isAfter(paidAt)) ? expiry : paidAt;
+            expiry = base.plusMonths(p.getProductType().getMonths());
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        boolean premium = expiry != null && expiry.isAfter(now);
+        Long daysLeft = premium ? ChronoUnit.DAYS.between(now, expiry) : null;
+
+        return PremiumStatusResponse.of(premium, expiry, daysLeft);
     }
 }
