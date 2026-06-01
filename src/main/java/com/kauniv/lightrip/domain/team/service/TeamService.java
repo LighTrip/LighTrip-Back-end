@@ -1,7 +1,11 @@
 package com.kauniv.lightrip.domain.team.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.kauniv.lightrip.domain.team.dto.request.LocationMessage;
 import com.kauniv.lightrip.domain.team.dto.request.TeamCreateRequest;
 import com.kauniv.lightrip.domain.team.dto.request.TeamJoinRequest;
+import com.kauniv.lightrip.domain.team.dto.response.LiveLocationResponse;
 import com.kauniv.lightrip.domain.team.dto.response.TeamMemberResponse;
 import com.kauniv.lightrip.domain.team.dto.response.TeamResponse;
 import com.kauniv.lightrip.domain.team.entity.Team;
@@ -13,10 +17,12 @@ import com.kauniv.lightrip.domain.user.repository.UserRepository;
 import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -28,6 +34,8 @@ public class TeamService {
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final UserRepository userRepository;
+    private final RedisTemplate<String, String> redisTemplate;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public TeamResponse create(Long userId, TeamCreateRequest req) {
@@ -105,5 +113,46 @@ public class TeamService {
         }
 
         teamMemberRepository.delete(member);
+    }
+
+    // sharing: false → Redis 키 즉시 삭제 → live-locations에서 바로 제외
+    // sharing: true  → 서버 처리 없음, 클라이언트가 WebSocket 전송 재개 시 자동 등록
+    public void updateLocationSharing(Long userId, Long teamId, boolean sharing) {
+        if (!teamMemberRepository.existsByTeam_IdAndUser_Id(teamId, userId)) {
+            throw new BusinessException(ErrorCode.TEAM_NOT_MEMBER);
+        }
+
+        if (!sharing) {
+            String key = "live:team:" + teamId + ":" + userId;
+            redisTemplate.delete(key);
+        }
+    }
+
+    // Redis에서 현재 온라인 팀원 위치 조회.
+    // TTL 5분 초과(오프라인) 유저는 키가 없으므로 null → filter로 제거.
+    // MapSyncController와 Redis key 구조 공유: live:team:{teamId}:{userId}
+    public List<LiveLocationResponse> getLiveLocations(Long teamId) {
+        teamRepository.findById(teamId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND));
+
+        return teamMemberRepository.findAllByTeam_Id(teamId).stream()
+                .map(member -> {
+                    String key = "live:team:" + teamId + ":" + member.getUser().getId();
+                    String json = redisTemplate.opsForValue().get(key);
+                    if (json == null) return null;
+                    try {
+                        LocationMessage msg = objectMapper.readValue(json, LocationMessage.class);
+                        return new LiveLocationResponse(
+                                msg.getUserId(), msg.getNickname(),
+                                msg.getLatitude(), msg.getLongitude(),
+                                msg.getPlaceName(), msg.getPassportId(),
+                                msg.getTimestamp()
+                        );
+                    } catch (JsonProcessingException e) {
+                        return null;
+                    }
+                })
+                .filter(Objects::nonNull)
+                .toList();
     }
 }
