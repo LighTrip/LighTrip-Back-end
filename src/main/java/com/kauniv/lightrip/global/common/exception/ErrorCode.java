@@ -64,7 +64,14 @@ public enum ErrorCode {
 
     // ===== DistrictCover =====
     DISTRICT_COVER_NOT_FOUND(HttpStatus.NOT_FOUND, "D001", "존재하지 않는 지역 커버입니다."),
-    DISTRICT_COVER_FORBIDDEN(HttpStatus.FORBIDDEN, "D002", "해당 지역 커버에 대한 권한이 없습니다.");
+    DISTRICT_COVER_FORBIDDEN(HttpStatus.FORBIDDEN, "D002", "해당 지역 커버에 대한 권한이 없습니다."),
+
+    // ===== Payment =====
+    PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "PAY001", "존재하지 않는 결제 주문입니다."),
+    PAYMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "PAY002", "해당 결제 주문에 대한 권한이 없습니다."),
+    PAYMENT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "PAY003", "이미 처리된 결제 주문입니다."),
+    PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "PAY004", "결제 금액이 일치하지 않습니다."),
+    PAYMENT_CONFIRM_FAILED(HttpStatus.BAD_GATEWAY, "PAY005", "결제 승인에 실패했습니다.");
 
     private final HttpStatus status;
     private final String code;
