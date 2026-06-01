@@ -37,9 +37,8 @@
 
 | 값 | 상품 | 금액 |
 |---|---|---|
-| `PREMIUM_1MONTH` | 프리미엄 1개월 | 9,900원 |
-| `PREMIUM_3MONTH` | 프리미엄 3개월 | 27,000원 |
-| `PREMIUM_1YEAR` | 프리미엄 12개월(1년) | 99,000원 |
+| `PREMIUM_1MONTH` | 프리미엄 1개월 | 4,900원 |
+| `PREMIUM_1YEAR` | 프리미엄 1년(12개월) | 49,000원 |
 
 **Response**
 ```json
@@ -50,7 +49,7 @@
   "data": {
     "orderId": "ec1d2666-1c90-48a1-ba73-ab03d08b3af7",
     "userId": 1,
-    "amount": 9900,
+    "amount": 4900,
     "orderName": "프리미엄 1개월"
   }
 }
@@ -67,7 +66,7 @@
 {
   "paymentKey": "토스가 준 paymentKey",
   "orderId": "주문 생성 때 받은 orderId",
-  "amount": 9900
+  "amount": 4900
 }
 ```
 
@@ -80,7 +79,7 @@
   "data": {
     "orderId": "ec1d2666-1c90-48a1-ba73-ab03d08b3af7",
     "status": "COMPLETED",
-    "amount": 9900,
+    "amount": 4900,
     "method": "카드",
     "approvedAt": "2026-06-01T12:34:56+09:00"
   }

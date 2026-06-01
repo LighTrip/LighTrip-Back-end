@@ -12,7 +12,7 @@ public record PaymentConfirmResponse(
         @Schema(description = "결제 상태 (COMPLETED = 승인 완료)", example = "COMPLETED")
         String status,
 
-        @Schema(description = "결제 금액 (KRW 원 단위)", example = "9900")
+        @Schema(description = "결제 금액 (KRW 원 단위)", example = "4900")
         Long amount,
 
         @Schema(description = "결제 수단 (카드, 가상계좌 등)", example = "카드")

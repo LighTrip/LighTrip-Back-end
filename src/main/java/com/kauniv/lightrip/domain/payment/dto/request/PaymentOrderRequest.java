@@ -9,10 +9,9 @@ public record PaymentOrderRequest(
 
         @Schema(
                 description = """
-                        [필수] 상품 타입 — 아래 3가지 중 택 1 (1개월 / 3개월 / 12개월)
-                        - `PREMIUM_1MONTH` : 프리미엄 1개월 (9,900원)
-                        - `PREMIUM_3MONTH` : 프리미엄 3개월 (27,000원)
-                        - `PREMIUM_1YEAR`  : 프리미엄 12개월(1년) (99,000원)
+                        [필수] 상품 타입 — 아래 2가지 중 택 1 (월 / 연)
+                        - `PREMIUM_1MONTH` : 프리미엄 1개월 (4,900원)
+                        - `PREMIUM_1YEAR`  : 프리미엄 1년(12개월) (49,000원)
                         """,
                 requiredMode = Schema.RequiredMode.REQUIRED,
                 example = "PREMIUM_1MONTH"
