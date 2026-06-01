@@ -1,7 +1,9 @@
 package com.kauniv.lightrip.domain.team.controller;
 
+import com.kauniv.lightrip.domain.team.dto.request.LocationSharingRequest;
 import com.kauniv.lightrip.domain.team.dto.request.TeamCreateRequest;
 import com.kauniv.lightrip.domain.team.dto.request.TeamJoinRequest;
+import com.kauniv.lightrip.domain.team.dto.response.LiveLocationResponse;
 import com.kauniv.lightrip.domain.team.dto.response.TeamMemberResponse;
 import com.kauniv.lightrip.domain.team.dto.response.TeamResponse;
 import com.kauniv.lightrip.domain.team.service.TeamService;
@@ -68,6 +70,23 @@ public class TeamController {
             @AuthenticationPrincipal Long userId,
             @Parameter(description = "탈퇴할 팀의 ID") @PathVariable Long teamId) {
         teamService.leave(userId, teamId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Operation(summary = "팀 실시간 위치 조회", description = "현재 위치를 공유 중인 팀원 목록을 반환합니다. 5분 이상 업데이트 없으면 목록에서 제외됩니다.")
+    @GetMapping("/{teamId}/live-locations")
+    public ResponseEntity<List<LiveLocationResponse>> getLiveLocations(
+            @Parameter(description = "조회할 팀의 ID") @PathVariable Long teamId) {
+        return ResponseEntity.ok(teamService.getLiveLocations(teamId));
+    }
+
+    @Operation(summary = "위치 공유 온오프", description = "위치 공유를 켜거나 끕니다. false 시 즉시 팀원 지도에서 제외됩니다.")
+    @PatchMapping("/{teamId}/live-locations/me")
+    public ResponseEntity<Void> updateLocationSharing(
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "팀 ID") @PathVariable Long teamId,
+            @RequestBody LocationSharingRequest req) {
+        teamService.updateLocationSharing(userId, teamId, req.sharing());
         return ResponseEntity.noContent().build();
     }
 }
