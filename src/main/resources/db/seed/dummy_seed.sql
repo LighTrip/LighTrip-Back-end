@@ -4,7 +4,8 @@ BEGIN;
 SELECT setseed(0.42);
 
 
-INSERT INTO users (nickname, email, profile_img, friend_code, location, bio, created_at, updated_at)
+INSERT INTO users (nickname, email, profile_img, friend_code, location, bio,
+                   theme_color, passport_theme, created_at, updated_at)
 SELECT
     'dummy_user_' || LPAD(gs::text, 3, '0'),
     'dummy' || gs || '@lightrip.dev',
@@ -16,6 +17,8 @@ SELECT
         ELSE '인천광역시'
     END,
     '안녕하세요! 더미 유저 ' || gs || '입니다.',
+    (ARRAY['#FFFFFF','#FFCCCC','#CCFFCC','#CCCCFF','#FFFFCC','#CCFFFF','#FFCCFF'])[1 + (gs % 7)],
+    CASE WHEN gs % 4 = 0 THEN 'classic' ELSE NULL END,
     NOW() - (random() * INTERVAL '180 days'),
     NOW()
 FROM generate_series(1, 300) AS gs;
@@ -48,7 +51,7 @@ SELECT
 FROM pairs;
 
 -- =============================================================================
--- 3. PASSPORTS (2000건) - 200명 × 평균 10건
+-- 3. PASSPORTS (~10000건 시도, 충돌 시 ON CONFLICT) - 300명 × 평균 33건
 -- =============================================================================
 INSERT INTO passport (
     user_id, content, latitude, longitude, address, visited_at,
@@ -218,11 +221,12 @@ WHERE p.passport_id = s.passport_id;
 -- 9. DISTRICT_COVER (유저별 지역 대표 이미지)
 --    각 (user, district)별 가장 최근 여권의 첫 이미지를 cover 로 지정
 -- =============================================================================
-INSERT INTO district_cover (user_id, district_category, image_url, created_at, updated_at)
+INSERT INTO district_cover (user_id, district_category, image_url, text_color, created_at, updated_at)
 SELECT DISTINCT ON (p.user_id, p.district_category)
     p.user_id,
     p.district_category,
     pi.image_url,
+    (ARRAY['#FFFFFF','#000000','#333333','#666666'])[1 + (random() * 3)::int],
     NOW(),
     NOW()
 FROM passport p
@@ -230,6 +234,45 @@ JOIN passport_image pi ON pi.passport_id = p.passport_id AND pi.image_order = 1
 JOIN users u ON p.user_id = u.user_id AND u.nickname LIKE 'dummy_user_%'
 ORDER BY p.user_id, p.district_category, p.created_at DESC
 ON CONFLICT (user_id, district_category) DO NOTHING;
+
+-- =============================================================================
+-- 10. TEAM (20개)
+-- =============================================================================
+INSERT INTO team (team_name, team_code, created_at, updated_at)
+SELECT
+    '더미팀_' || LPAD(gs::text, 3, '0'),
+    'TEAM' || LPAD(gs::text, 4, '0'),
+    NOW() - (random() * INTERVAL '90 days'),
+    NOW()
+FROM generate_series(1, 20) AS gs
+ON CONFLICT (team_code) DO NOTHING;
+
+-- =============================================================================
+-- 11. TEAM_MEMBER (팀당 3~5명, 첫 사람은 LEADER 나머지는 MEMBER)
+-- =============================================================================
+INSERT INTO team_member (team_id, user_id, role, joined_at)
+WITH dummy_teams AS (
+    SELECT
+        team_id,
+        3 + (random() * 2)::int AS team_size
+    FROM team WHERE team_name LIKE '더미팀_%'
+),
+team_users AS (
+    SELECT
+        dt.team_id,
+        dt.team_size,
+        u.user_id,
+        ROW_NUMBER() OVER (PARTITION BY dt.team_id ORDER BY random()) AS rn
+    FROM dummy_teams dt
+    CROSS JOIN (SELECT user_id FROM users WHERE nickname LIKE 'dummy_user_%') u
+)
+SELECT
+    team_id,
+    user_id,
+    CASE WHEN rn = 1 THEN 'LEADER' ELSE 'MEMBER' END,
+    NOW() - (random() * INTERVAL '60 days')
+FROM team_users
+WHERE rn <= team_size;
 
 -- =============================================================================
 -- 결과 요약
@@ -244,6 +287,8 @@ DECLARE
     like_cnt    bigint;
     scrap_cnt   bigint;
     cover_cnt   bigint;
+    team_cnt    bigint;
+    team_member_cnt bigint;
 BEGIN
     SELECT COUNT(*) INTO user_cnt FROM users WHERE nickname LIKE 'dummy_user_%';
     SELECT COUNT(*) INTO friend_cnt FROM friend f
@@ -262,6 +307,9 @@ BEGIN
         JOIN users u ON s.user_id = u.user_id AND u.nickname LIKE 'dummy_user_%';
     SELECT COUNT(*) INTO cover_cnt FROM district_cover dc
         JOIN users u ON dc.user_id = u.user_id AND u.nickname LIKE 'dummy_user_%';
+    SELECT COUNT(*) INTO team_cnt FROM team WHERE team_name LIKE '더미팀_%';
+    SELECT COUNT(*) INTO team_member_cnt FROM team_member tm
+        JOIN team t ON tm.team_id = t.team_id AND t.team_name LIKE '더미팀_%';
 
     RAISE NOTICE '=== LighTrip 더미 데이터 삽입 결과 ===';
     RAISE NOTICE 'users          : %', user_cnt;
@@ -272,6 +320,8 @@ BEGIN
     RAISE NOTICE 'likes          : %', like_cnt;
     RAISE NOTICE 'scrap          : %', scrap_cnt;
     RAISE NOTICE 'district_cover : %', cover_cnt;
+    RAISE NOTICE 'team           : %', team_cnt;
+    RAISE NOTICE 'team_member    : %', team_member_cnt;
 END $$;
 
 COMMIT;
