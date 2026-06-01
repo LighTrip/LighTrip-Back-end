@@ -14,4 +14,5 @@ public class LocationMessage {
     private Double longitude;
     private String placeName;
     private Long passportId;
+    private String timestamp; // 서버에서 ISO-8601로 덮어씀
 }
