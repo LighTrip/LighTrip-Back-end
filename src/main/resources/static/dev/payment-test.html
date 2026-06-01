@@ -23,18 +23,18 @@
 <h1>🧪 토스페이먼츠 결제 테스트 (DEV 전용)</h1>
 
 <div id="form-section">
-    <label>API Base URL</label>
+    <label for="baseUrl">API Base URL</label>
     <input id="baseUrl" value="http://localhost:8080"/>
 
-    <label>테스트 userId (dev 토큰 발급용)</label>
+    <label for="userId">테스트 userId (dev 토큰 발급용)</label>
     <input id="userId" type="number" value="1"/>
     <div class="hint">GET /dev/token/{userId} 로 accessToken을 발급받습니다. (dev 프로파일 필요)</div>
 
-    <label>토스 클라이언트 키 (test_ck_...)</label>
+    <label for="clientKey">토스 클라이언트 키 (test_ck_...)</label>
     <input id="clientKey" placeholder="test_ck_..."/>
     <div class="hint">⚠️ 백엔드 .env의 TOSS_SECRET_KEY(test_sk_)와 <b>같은 상점의 키</b>여야 confirm이 성공합니다.</div>
 
-    <label>상품</label>
+    <label for="productType">상품</label>
     <select id="productType">
         <option value="PREMIUM_1MONTH">프리미엄 1개월 (4,900원)</option>
         <option value="PREMIUM_1YEAR">프리미엄 1년 (49,000원)</option>
@@ -103,7 +103,7 @@
             localStorage.setItem(LS.base, base);
             localStorage.setItem(LS.token, token);
 
-            const redirectBase = window.location.origin + window.location.pathname;
+            const redirectBase = globalThis.location.origin + globalThis.location.pathname;
             const tossPayments = TossPayments(clientKey);
             tossPayments.requestPayment('카드', {
                 amount: order.amount,
@@ -122,7 +122,7 @@
 
     // 4) 승인(confirm): 결제창 성공 리다이렉트 후 실행
     async function confirmPayment() {
-        const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams(globalThis.location.search);
         const paymentKey = params.get('paymentKey');
         const orderId = params.get('orderId');
         const amount = Number(params.get('amount'));
@@ -149,7 +149,7 @@
 
     // 5) 페이지 로드 시 단계 분기
     (function onLoad() {
-        const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams(globalThis.location.search);
         const step = params.get('step');
         if (step === 'confirm') {
             confirmPayment();
