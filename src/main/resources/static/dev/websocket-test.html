@@ -99,8 +99,8 @@
         const teamId = document.getElementById('teamId').value;
         const payload = {
             nickname: document.getElementById('nickname').value,
-            latitude: parseFloat(document.getElementById('lat').value),
-            longitude: parseFloat(document.getElementById('lng').value),
+            latitude: Number.parseFloat(document.getElementById('lat').value),
+            longitude: Number.parseFloat(document.getElementById('lng').value),
             placeName: document.getElementById('place').value
         };
         client.send(`/app/team/${teamId}/location`, {}, JSON.stringify(payload));
