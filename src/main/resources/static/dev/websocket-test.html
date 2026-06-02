@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>WebSocket 테스트</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs/lib/stomp.min.js"></script>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+        input, button { margin: 4px; padding: 6px 12px; }
+        input { background: #2d2d2d; color: #d4d4d4; border: 1px solid #555; width: 300px; }
+        button { background: #0e639c; color: white; border: none; cursor: pointer; }
+        button:hover { background: #1177bb; }
+        #log { background: #2d2d2d; padding: 12px; margin-top: 16px; height: 400px; overflow-y: auto; border: 1px solid #555; }
+        .ok  { color: #4ec9b0; }
+        .err { color: #f44747; }
+        .msg { color: #dcdcaa; }
+    </style>
+</head>
+<body>
+<h2>🗺️ WebSocket 실시간 위치 공유 테스트</h2>
+
+<div>
+    <b>1. 토큰 발급</b><br>
+    userId: <input id="userId" value="1" style="width:80px">
+    <button onclick="getToken()">토큰 발급</button>
+    <span id="tokenDisplay"></span>
+</div>
+<br>
+<div>
+    <b>2. WebSocket 연결</b><br>
+    teamId: <input id="teamId" value="1" style="width:80px">
+    <button onclick="connect()">연결</button>
+    <button onclick="disconnect()">연결 끊기</button>
+</div>
+<br>
+<div>
+    <b>3. 위치 전송</b><br>
+    nickname: <input id="nickname" value="테스트유저" style="width:120px">
+    latitude: <input id="lat" value="37.4979" style="width:100px">
+    longitude: <input id="lng" value="127.0276" style="width:100px">
+    placeName: <input id="place" value="강남역" style="width:100px">
+    <button onclick="sendLocation()">위치 전송</button>
+</div>
+<br>
+<div>
+    <b>4. 위치 공유 끄기</b><br>
+    <button onclick="sharingOff()">공유 끄기 (PATCH)</button>
+    <button onclick="getLiveLocations()">현재 위치 조회 (GET)</button>
+</div>
+
+<div id="log"></div>
+
+<script>
+    const BASE = 'https://dev.lightrip.cloud';
+    let token = '';
+    let client = null;
+
+    function log(msg, type = '') {
+        const div = document.getElementById('log');
+        div.innerHTML += `<div class="${type}">[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+        div.scrollTop = div.scrollHeight;
+    }
+
+    async function getToken() {
+        const userId = document.getElementById('userId').value;
+        const res = await fetch(`${BASE}/dev/token/${userId}`);
+        const data = await res.json();
+        token = data.accessToken;
+        document.getElementById('tokenDisplay').textContent = '✅ 발급 완료';
+        log(`토큰 발급 완료 (userId: ${userId})`, 'ok');
+    }
+
+    function connect() {
+        if (!token) { log('먼저 토큰을 발급하세요.', 'err'); return; }
+        const teamId = document.getElementById('teamId').value;
+        const socket = new SockJS(`${BASE}/ws`);
+        client = Stomp.over(socket);
+        client.debug = null;
+
+        client.connect({ Authorization: `Bearer ${token}` }, () => {
+            log(`WebSocket 연결 성공 (teamId: ${teamId})`, 'ok');
+            client.subscribe(`/topic/team/${teamId}`, (msg) => {
+                const body = JSON.parse(msg.body);
+                log(`📍 수신: ${body.nickname} → (${body.latitude}, ${body.longitude}) ${body.placeName || ''}`, 'msg');
+            });
+            log(`/topic/team/${teamId} 구독 완료`, 'ok');
+        }, (err) => {
+            log(`연결 실패: ${err}`, 'err');
+        });
+    }
+
+    function disconnect() {
+        if (client) { client.disconnect(); log('연결 끊김', 'err'); }
+    }
+
+    function sendLocation() {
+        if (!client) { log('먼저 연결하세요.', 'err'); return; }
+        const teamId = document.getElementById('teamId').value;
+        const payload = {
+            nickname: document.getElementById('nickname').value,
+            latitude: parseFloat(document.getElementById('lat').value),
+            longitude: parseFloat(document.getElementById('lng').value),
+            placeName: document.getElementById('place').value
+        };
+        client.send(`/app/team/${teamId}/location`, {}, JSON.stringify(payload));
+        log(`📤 전송: ${JSON.stringify(payload)}`, 'ok');
+    }
+
+    async function sharingOff() {
+        const teamId = document.getElementById('teamId').value;
+        const res = await fetch(`${BASE}/api/v1/teams/${teamId}/live-locations/me`, {
+            method: 'PATCH',
+            headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sharing: false })
+        });
+        log(`공유 끄기 → ${res.status === 204 ? '성공 ✅' : '실패 ❌'}`, res.status === 204 ? 'ok' : 'err');
+    }
+
+    async function getLiveLocations() {
+        const teamId = document.getElementById('teamId').value;
+        const res = await fetch(`${BASE}/api/v1/teams/${teamId}/live-locations`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        log(`현재 위치 목록: ${JSON.stringify(data)}`, 'msg');
+    }
+</script>
+</body>
+</html>
