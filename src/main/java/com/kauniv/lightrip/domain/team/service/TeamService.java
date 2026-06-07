@@ -115,22 +115,9 @@ public class TeamService {
         teamMemberRepository.delete(member);
     }
 
-    // sharing: false → Redis 키 즉시 삭제 → live-locations에서 바로 제외
-    // sharing: true  → 서버 처리 없음, 클라이언트가 WebSocket 전송 재개 시 자동 등록
-    public void updateLocationSharing(Long userId, Long teamId, boolean sharing) {
-        if (!teamMemberRepository.existsByTeam_IdAndUser_Id(teamId, userId)) {
-            throw new BusinessException(ErrorCode.TEAM_NOT_MEMBER);
-        }
-
-        if (!sharing) {
-            String key = "live:team:" + teamId + ":" + userId;
-            redisTemplate.delete(key);
-        }
-    }
-
-    // Redis에서 현재 온라인 팀원 위치 조회.
-    // TTL 5분 초과(오프라인) 유저는 키가 없으므로 null → filter로 제거.
-    // MapSyncController와 Redis key 구조 공유: live:team:{teamId}:{userId}
+    > Redis에서 현재 온라인 팀원 위치 조회.
+    > TTL 5분 초과(오프라인) 유저는 키가 없으므로 null → filter로 제거.
+    > MapSyncController와 Redis key 구조 공유: live:team:{teamId}:{userId}
     public List<LiveLocationResponse> getLiveLocations(Long teamId) {
         teamRepository.findById(teamId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND));
