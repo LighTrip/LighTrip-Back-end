@@ -16,10 +16,11 @@ public class AiService {
     private final AiClient aiClient;
     // > FastAPI 호출 담당 클라이언트.
 
-    public AiDraftResponse generateDraft(String imageUrl) {
-        // > 이미지 URL로 AI 초안과 카테고리 초기값을 생성해서 반환.
+    public AiDraftResponse generateDraft(String imageUrl, String text, String authorization) {
+        // > 이미지 URL과 설명 텍스트로 AI 초안과 카테고리 초기값을 생성해서 반환.
+        // > authorization: 사용자 JWT를 AI 서버로 전달하기 위한 Authorization 헤더값.
 
-        AiResponse aiResponse = aiClient.generate(imageUrl);
+        AiResponse aiResponse = aiClient.generate(imageUrl, text, authorization);
         // > FastAPI /pipeline/generate 호출.
 
         if (aiResponse == null) {
