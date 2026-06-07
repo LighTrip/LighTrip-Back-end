@@ -16,10 +16,11 @@ public class AiService {
     private final AiClient aiClient;
     // > FastAPI 호출 담당 클라이언트.
 
-    public AiDraftResponse generateDraft(String imageUrl) {
-        // > 이미지 URL로 AI 초안과 카테고리 초기값을 생성해서 반환.
+    public AiDraftResponse generateDraft(String imageUrl, String text, String authorization) {
+        // > 이미지 URL과 설명 텍스트로 AI 초안과 카테고리 초기값을 생성해서 반환.
+        // > authorization: 사용자 JWT를 AI 서버로 전달하기 위한 Authorization 헤더값.
 
-        AiResponse aiResponse = aiClient.generate(imageUrl);
+        AiResponse aiResponse = aiClient.generate(imageUrl, text, authorization);
         // > FastAPI /pipeline/generate 호출.
 
         if (aiResponse == null) {
@@ -35,12 +36,20 @@ public class AiService {
 
     private Category parseCategory(String categoryStr) {
         // > AI 반환값을 Category enum으로 안전하게 변환.
-        // > 매핑 실패 시 ETC로 폴백.
-        try {
-            return Category.valueOf(categoryStr);
-        } catch (IllegalArgumentException e) {
-            log.warn("AI 카테고리 매핑 실패: {} → ETC로 폴백", categoryStr);
+        // > AI 서버는 한글 라벨(displayName, 예: "카페")을 반환하므로 displayName으로 매칭.
+        // > 영문 enum 이름(예: "CAFE")도 허용. 매핑 실패 시 ETC로 폴백.
+        if (categoryStr == null) {
             return Category.ETC;
         }
+
+        String value = categoryStr.trim();
+        for (Category category : Category.values()) {
+            if (category.getDisplayName().equals(value) || category.name().equalsIgnoreCase(value)) {
+                return category;
+            }
+        }
+
+        log.warn("AI 카테고리 매핑 실패: {} → ETC로 폴백", categoryStr);
+        return Category.ETC;
     }
 }
