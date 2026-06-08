@@ -29,8 +29,9 @@ public class AiService {
         // > fallback: stub 반환값이 null이거나 text가 없으면 기존 이미지 기반 초안으로 폴백.
 
         if (text != null && !text.isBlank() && userId != null) {
-            float[] embedding = aiClient.getEmbedding(text);
+            float[] embedding = aiClient.getEmbedding(text, authorization);
             // > 메모 텍스트를 벡터로 변환 — 유사 과거 기록 검색에 사용.
+            // > authorization: FastAPI JWT 검증에 사용. generate()와 동일하게 전달.
 
             if (embedding != null) {
                 List<String> similarContents = passportRepository.findSimilarContents(
@@ -38,7 +39,7 @@ public class AiService {
                 // > 코사인 유사도 기준 상위 3개 과거 기록 텍스트 조회.
 
                 if (!similarContents.isEmpty()) {
-                    AiResponse aiResponse = aiClient.generateWithContext(imageUrl, similarContents);
+                    AiResponse aiResponse = aiClient.generateWithContext(imageUrl, similarContents, authorization);
                     // > 이미지 + 과거 기록 3개를 FastAPI /generate-blog에 전달.
 
                     if (aiResponse != null) {
@@ -59,12 +60,13 @@ public class AiService {
 
     @Async
     @Transactional
-    public void saveEmbeddingAsync(Long passportId, String content) {
+    public void saveEmbeddingAsync(Long passportId, String content, String authorization) {
         // > 여권 저장 후 비동기로 호출. content를 임베딩해서 pgvector에 저장.
         // > @Async: 여권 저장 API 응답 지연 방지 — Gemma 처리 시간을 백그라운드에서 처리.
+        // > authorization: FastAPI /get-embedding JWT 검증에 사용. HTTP 요청 스레드에서 받아서 전달.
         // > 실패해도 여권 저장 자체에는 영향 없음 (try-catch로 격리).
         try {
-            float[] embedding = aiClient.getEmbedding(content);
+            float[] embedding = aiClient.getEmbedding(content, authorization);
             if (embedding == null) {
                 log.warn("임베딩 저장 skip: /get-embedding stub 상태 (passportId={})", passportId);
                 return;

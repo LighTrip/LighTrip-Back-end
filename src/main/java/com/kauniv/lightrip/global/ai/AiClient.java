@@ -90,14 +90,16 @@ public class AiClient {
         }
     }
 
-    public float[] getEmbedding(String text) {
+    public float[] getEmbedding(String text, String authorization) {
         // > 텍스트를 1536차원 벡터로 변환. pgvector 저장 및 RAG 검색에 사용.
+        // > authorization: FastAPI JWT 검증에 필요. generate()와 동일하게 전달.
         // > AI 팀 /get-embedding 엔드포인트 완성 후 아래 주석 해제.
 
         // TODO: AI 팀 /get-embedding 완성 후 주석 해제
         // try {
         //     EmbeddingResponse response = restClient.post()
         //             .uri(aiServerUrl + "/get-embedding")
+        //             .header(HttpHeaders.AUTHORIZATION, authorization)
         //             .contentType(MediaType.APPLICATION_JSON)
         //             .body(Map.of("text", text))
         //             .retrieve()
@@ -112,8 +114,9 @@ public class AiClient {
         return null;
     }
 
-    public AiResponse generateWithContext(String imageUrl, List<String> context) {
+    public AiResponse generateWithContext(String imageUrl, List<String> context, String authorization) {
         // > 이미지 + 과거 기록 context를 함께 전송해서 개인화된 초안 생성.
+        // > authorization: FastAPI JWT 검증에 필요. generate()와 동일하게 전달.
         // > AI 팀 /generate-blog 엔드포인트 완성 후 아래 주석 해제.
 
         // TODO: AI 팀 /generate-blog 완성 후 주석 해제
@@ -132,6 +135,7 @@ public class AiClient {
         //
         //     return restClient.post()
         //             .uri(aiServerUrl + "/generate-blog")
+        //             .header(HttpHeaders.AUTHORIZATION, authorization)
         //             .contentType(MediaType.MULTIPART_FORM_DATA)
         //             .body(body)
         //             .retrieve()
