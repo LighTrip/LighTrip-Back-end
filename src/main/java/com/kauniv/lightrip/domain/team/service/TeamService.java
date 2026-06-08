@@ -117,7 +117,7 @@ public class TeamService {
 
     // > Redis에서 현재 온라인 팀원 위치 조회.
     // > TTL 5분 초과(오프라인) 유저는 키가 없으므로 null → filter로 제거.
-    // > MapSyncController와 Redis key 구조 공유: live:team:{teamId}:{userId}
+    // > MapSyncController와 Redis key 구조 공유 (key 패턴: "live:team:[teamId]:[userId]")
     public List<LiveLocationResponse> getLiveLocations(Long teamId) {
         teamRepository.findById(teamId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND));
