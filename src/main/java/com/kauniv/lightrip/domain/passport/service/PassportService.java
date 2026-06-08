@@ -64,7 +64,7 @@ public class PassportService {
 
     // ========== 등록 ==========
     @Transactional
-    public PassportResponse create(Long userId, PassportCreateRequest req) {
+    public PassportResponse create(Long userId, PassportCreateRequest req, String authorization) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
@@ -107,8 +107,9 @@ public class PassportService {
 
         createDistrictCoverIfFirst(user, passport);
 
-        aiService.saveEmbeddingAsync(passport.getId(), req.content());
+        aiService.saveEmbeddingAsync(passport.getId(), req.content(), authorization);
         // > 여권 저장 완료 후 content를 비동기로 임베딩 → pgvector 저장.
+        // > authorization: FastAPI 호출 시 JWT 검증에 필요. HTTP 요청에서 받아서 async 메서드에 전달.
         // > 응답 지연 없음. 실패해도 여권 저장에 영향 없음.
 
         return PassportResponse.from(passport);

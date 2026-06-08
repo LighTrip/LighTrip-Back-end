@@ -115,9 +115,9 @@ public class TeamService {
         teamMemberRepository.delete(member);
     }
 
-    > Redis에서 현재 온라인 팀원 위치 조회.
-    > TTL 5분 초과(오프라인) 유저는 키가 없으므로 null → filter로 제거.
-    > MapSyncController와 Redis key 구조 공유: live:team:{teamId}:{userId}
+    // > Redis에서 현재 온라인 팀원 위치 조회.
+    // > TTL 5분 초과(오프라인) 유저는 키가 없으므로 null → filter로 제거.
+    // > MapSyncController와 Redis key 구조 공유: live:team:{teamId}:{userId}
     public List<LiveLocationResponse> getLiveLocations(Long teamId) {
         teamRepository.findById(teamId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND));
@@ -141,5 +141,21 @@ public class TeamService {
                 })
                 .filter(Objects::nonNull)
                 .toList();
+    }
+
+    @Transactional
+    public void updateLocationSharing(Long userId, Long teamId, boolean sharing) {
+        // > sharing=false 시 Redis 키 즉시 삭제 → GET /live-locations 응답에서 즉시 제외.
+        // > sharing=true 시 아무 작업 없음 — 실제 위치 데이터는 WebSocket 메시지 수신 시 저장됨.
+        if (!teamRepository.existsById(teamId)) {
+            throw new BusinessException(ErrorCode.TEAM_NOT_FOUND);
+        }
+        if (!teamMemberRepository.existsByTeam_IdAndUser_Id(teamId, userId)) {
+            throw new BusinessException(ErrorCode.TEAM_NOT_MEMBER);
+        }
+        if (!sharing) {
+            String key = "live:team:" + teamId + ":" + userId;
+            redisTemplate.delete(key);
+        }
     }
 }
