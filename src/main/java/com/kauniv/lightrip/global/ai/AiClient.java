@@ -15,7 +15,6 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Component
@@ -93,59 +92,20 @@ public class AiClient {
     public float[] getEmbedding(String text, String authorization) {
         // > 텍스트를 1536차원 벡터로 변환. pgvector 저장 및 RAG 검색에 사용.
         // > authorization: FastAPI JWT 검증에 필요. generate()와 동일하게 전달.
-        // > AI 팀 /get-embedding 엔드포인트 완성 후 아래 주석 해제.
-
-        // TODO: AI 팀 /get-embedding 완성 후 주석 해제
-        // try {
-        //     EmbeddingResponse response = restClient.post()
-        //             .uri(aiServerUrl + "/get-embedding")
-        //             .header(HttpHeaders.AUTHORIZATION, authorization)
-        //             .contentType(MediaType.APPLICATION_JSON)
-        //             .body(Map.of("text", text))
-        //             .retrieve()
-        //             .body(EmbeddingResponse.class);
-        //     return response != null ? response.embedding() : null;
-        // } catch (Exception e) {
-        //     log.warn("AI /get-embedding 호출 실패: {}", e.getMessage());
-        //     return null;
-        // }
-
-        log.warn("AI /get-embedding stub — AI 팀 구현 대기 중");
+        // > [AI 팀 구현 후 추가] POST /get-embedding, body: {"text": text}, header: Authorization
+        // >   EmbeddingResponse.embedding() 반환값을 float[]로 return.
+        log.warn("AI /get-embedding stub — AI 팀 구현 대기 중 (textLength={})",
+                text != null ? text.length() : 0);
         return null;
     }
 
     public AiResponse generateWithContext(String imageUrl, List<String> context, String authorization) {
         // > 이미지 + 과거 기록 context를 함께 전송해서 개인화된 초안 생성.
         // > authorization: FastAPI JWT 검증에 필요. generate()와 동일하게 전달.
-        // > AI 팀 /generate-blog 엔드포인트 완성 후 아래 주석 해제.
-
-        // TODO: AI 팀 /generate-blog 완성 후 주석 해제
-        // try {
-        //     ResponseEntity<byte[]> imageResponse = restClient.get()
-        //             .uri(imageUrl).retrieve().toEntity(byte[].class);
-        //     byte[] imageBytes = imageResponse.getBody();
-        //     if (imageBytes == null || imageBytes.length == 0) return null;
-        //
-        //     String filename = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
-        //     MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-        //     body.add("image", new ByteArrayResource(imageBytes) {
-        //         @Override public String getFilename() { return filename; }
-        //     });
-        //     body.add("context", context);
-        //
-        //     return restClient.post()
-        //             .uri(aiServerUrl + "/generate-blog")
-        //             .header(HttpHeaders.AUTHORIZATION, authorization)
-        //             .contentType(MediaType.MULTIPART_FORM_DATA)
-        //             .body(body)
-        //             .retrieve()
-        //             .body(AiResponse.class);
-        // } catch (Exception e) {
-        //     log.warn("AI /generate-blog 호출 실패: {}", e.getMessage());
-        //     return null;
-        // }
-
-        log.warn("AI /generate-blog stub — AI 팀 구현 대기 중");
+        // > [AI 팀 구현 후 추가] POST /generate-blog, multipart: image + context list, header: Authorization
+        // >   generate()의 이미지 다운로드 + multipart 구성 패턴 그대로 재사용.
+        log.warn("AI /generate-blog stub — AI 팀 구현 대기 중 (contextSize={})",
+                context != null ? context.size() : 0);
         return null;
     }
 }
