@@ -19,10 +19,10 @@ import java.time.Instant;
 @RequiredArgsConstructor
 public class MapSyncController {
 
-    // SimpMessagingTemplate: @SendTo 대신 사용 — 검증 후에만 브로드캐스트하기 위함
-    // TeamMemberRepository: 팀 멤버 여부 검증
-    // RedisTemplate: 현재 위치 저장 (TTL 5분, 오프라인 시 자동 만료)
-    // ObjectMapper: LocationMessage → JSON 직렬화
+    // > SimpMessagingTemplate: @SendTo 대신 사용 — 검증 후에만 브로드캐스트하기 위함
+    // > TeamMemberRepository: 팀 멤버 여부 검증
+    // > RedisTemplate: 현재 위치 저장 (TTL 5분, 오프라인 시 자동 만료)
+    // > ObjectMapper: LocationMessage → JSON 직렬화
     private final SimpMessagingTemplate messagingTemplate;
     private final TeamMemberRepository teamMemberRepository;
     private final RedisTemplate<String, String> redisTemplate;
@@ -37,16 +37,16 @@ public class MapSyncController {
             SimpMessageHeaderAccessor headerAccessor
     ) throws JsonProcessingException {
 
-        // StompHandler가 CONNECT 시 세션에 저장한 userId 사용
-        // 클라이언트가 보낸 message.getUserId()는 무시 — 위변조 방지
+        // > StompHandler가 CONNECT 시 세션에 저장한 userId 사용
+        // > 클라이언트가 보낸 message.getUserId()는 무시 — 위변조 방지
         Long userId = (Long) headerAccessor.getSessionAttributes().get("userId");
 
-        // 해당 팀의 멤버인지 검증. 비멤버는 메시지 무시
+        // > 해당 팀의 멤버인지 검증. 비멤버는 메시지 무시
         if (!teamMemberRepository.existsByTeam_IdAndUser_Id(teamId, userId)) {
             return;
         }
 
-        // 서버 타임스탬프 + 인증된 userId로 교체한 검증 메시지 생성
+        // > 서버 타임스탬프 + 인증된 userId로 교체한 검증 메시지 생성
         LocationMessage verified = new LocationMessage(
                 userId,
                 message.getNickname(),
@@ -57,12 +57,12 @@ public class MapSyncController {
                 Instant.now().toString()
         );
 
-        // Redis 저장 key: live:team:{teamId}:{userId}
-        // TTL 초과 시 자동 삭제 → GET /live-locations 응답에서 자동 제외
+        // > Redis 저장 key: live:team:{teamId}:{userId}
+        // > TTL 초과 시 자동 삭제 → GET /live-locations 응답에서 자동 제외
         String key = "live:team:" + teamId + ":" + userId;
         redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(verified), LOCATION_TTL);
 
-        // 같은 팀 구독자 전원에게 브로드캐스트
+        // > 같은 팀 구독자 전원에게 브로드캐스트
         messagingTemplate.convertAndSend("/topic/team/" + teamId, verified);
     }
 }
