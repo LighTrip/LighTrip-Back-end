@@ -36,6 +36,7 @@ import com.kauniv.lightrip.global.enums.Category;
 import com.kauniv.lightrip.domain.passport.dto.response.PassportStatsResponse;
 import com.kauniv.lightrip.domain.like.repository.LikeRepository;
 import com.kauniv.lightrip.domain.passport.dto.response.FeedPassportResponse;
+import com.kauniv.lightrip.global.ai.service.AiService;
 import com.kauniv.lightrip.global.common.response.FeedCursorResponse;
 import java.math.RoundingMode;
 import java.util.HashSet;
@@ -58,10 +59,12 @@ public class PassportService {
     private final FriendRepository friendRepository;
     private final DistrictCoverRepository districtCoverRepository;
     private final LikeRepository likeRepository;
+    private final AiService aiService;
+    // > 여권 저장 후 content 임베딩을 비동기로 저장하기 위해 주입.
 
     // ========== 등록 ==========
     @Transactional
-    public PassportResponse create(Long userId, PassportCreateRequest req) {
+    public PassportResponse create(Long userId, PassportCreateRequest req, String authorization) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
@@ -103,6 +106,11 @@ public class PassportService {
         passportRepository.flush();
 
         createDistrictCoverIfFirst(user, passport);
+
+        aiService.saveEmbeddingAsync(passport.getId(), req.content(), authorization);
+        // > 여권 저장 완료 후 content를 비동기로 임베딩 → pgvector 저장.
+        // > authorization: FastAPI 호출 시 JWT 검증에 필요. HTTP 요청에서 받아서 async 메서드에 전달.
+        // > 응답 지연 없음. 실패해도 여권 저장에 영향 없음.
 
         return PassportResponse.from(passport);
     }

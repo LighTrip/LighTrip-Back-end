@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
@@ -75,9 +76,11 @@ public class PassportController {
     @PostMapping
     public ApiResponse<PassportResponse> create(
             @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody PassportCreateRequest request
+            @Valid @RequestBody PassportCreateRequest request,
+            @Parameter(hidden = true) @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
+            // > FastAPI /get-embedding 호출 시 JWT 검증에 사용. Swagger UI에는 노출하지 않음.
     ) {
-        return ApiResponse.success("여권이 등록되었습니다.", passportService.create(userId, request));
+        return ApiResponse.success("여권이 등록되었습니다.", passportService.create(userId, request, authorization));
     }
 
     @Operation(summary = "여권 수정",
