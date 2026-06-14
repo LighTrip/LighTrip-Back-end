@@ -153,6 +153,7 @@ public class FriendService {
 
     public List<FriendPassportResponse> getFriendPassports(Long currentUserId,
                                                            Long friendId,
+                                                           District district,
                                                            Pageable pageable) {
         if (!friendRepository.isFriend(currentUserId, friendId)) {
             throw new BusinessException(ErrorCode.FRIEND_NOT_MEMBER);
@@ -161,7 +162,7 @@ public class FriendService {
         userRepository.findById(friendId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        return passportRepository.findPublicPassportsByUserId(friendId, pageable)
+        return passportRepository.findPublicPassportsByUserId(friendId, district, pageable)
                 .stream()
                 .map(FriendPassportResponse::from)
                 .toList();
