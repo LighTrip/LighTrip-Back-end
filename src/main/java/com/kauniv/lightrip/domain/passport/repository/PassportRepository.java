@@ -227,9 +227,11 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
         LEFT JOIN FETCH p.images
         WHERE p.user.id = :userId
           AND p.visibility = com.kauniv.lightrip.global.enums.Visibility.PUBLIC
+          AND (:district IS NULL OR p.districtCategory = :district)
         ORDER BY p.visitedAt DESC, p.id DESC
         """)
     List<Passport> findPublicPassportsByUserId(@Param("userId") Long userId,
+                                               @Param("district") District district,
                                                Pageable pageable);
 
     List<Passport> findAllByTeam_Id(Long teamId);
