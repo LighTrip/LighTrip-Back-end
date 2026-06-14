@@ -102,7 +102,8 @@ public class AiClient {
                     .body(Map.of("texts", List.of(text)))
                     .retrieve()
                     .body(EmbeddingResponse.class);
-            return response != null ? response.firstEmbedding() : null;
+            float[] result = response != null ? response.firstEmbedding() : new float[0];
+            return result.length > 0 ? result : null;
         } catch (Exception e) {
             log.warn("AI /get-embedding 호출 실패 (textLength={}): {}",
                     text != null ? text.length() : 0, e.getMessage());

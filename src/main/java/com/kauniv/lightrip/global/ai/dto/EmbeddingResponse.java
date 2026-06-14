@@ -16,9 +16,9 @@ public record EmbeddingResponse(
     // > texts 배열의 첫 번째 임베딩을 float[]로 변환.
     // > pgvector CAST("..." AS vector) 형식 변환에 사용.
     public float[] firstEmbedding() {
-        if (embeddings == null || embeddings.isEmpty()) return null;
+        if (embeddings == null || embeddings.isEmpty()) return new float[0];
         List<Float> first = embeddings.get(0);
-        if (first == null || first.isEmpty()) return null;
+        if (first == null || first.isEmpty()) return new float[0];
         float[] result = new float[first.size()];
         for (int i = 0; i < first.size(); i++) {
             result[i] = first.get(i);
