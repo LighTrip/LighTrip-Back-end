@@ -15,6 +15,7 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
 
 import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -90,13 +91,24 @@ public class AiClient {
     }
 
     public float[] getEmbedding(String text, String authorization) {
-        // > 텍스트를 1536차원 벡터로 변환. pgvector 저장 및 RAG 검색에 사용.
-        // > authorization: FastAPI JWT 검증에 필요. generate()와 동일하게 전달.
-        // > [AI 팀 구현 후 추가] POST /get-embedding, body: {"text": text}, header: Authorization
-        // >   EmbeddingResponse.embedding() 반환값을 float[]로 return.
-        log.warn("AI /get-embedding stub — AI 팀 구현 대기 중 (textLength={})",
-                text != null ? text.length() : 0);
-        return null;
+        // > POST /get-embedding, body: {"texts": [text]} (배치 API — 단일 텍스트 1개 전송).
+        // > 응답: {"dim": 1536, "embeddings": [[...]]} → firstEmbedding()으로 float[] 추출.
+        // > authorization: FastAPI JWT 검증에 필요.
+        try {
+            EmbeddingResponse response = restClient.post()
+                    .uri(aiServerUrl + "/get-embedding")
+                    .header(HttpHeaders.AUTHORIZATION, authorization)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(Map.of("texts", List.of(text)))
+                    .retrieve()
+                    .body(EmbeddingResponse.class);
+            float[] result = response != null ? response.firstEmbedding() : new float[0];
+            return result.length > 0 ? result : null;
+        } catch (Exception e) {
+            log.warn("AI /get-embedding 호출 실패 (textLength={}): {}",
+                    text != null ? text.length() : 0, e.getMessage());
+            return null;
+        }
     }
 
     public AiResponse generateWithContext(String imageUrl, List<String> context, String authorization) {
