@@ -48,19 +48,19 @@ public interface FriendRepository extends JpaRepository<Friend, Long> {
                                       @Param("otherIds") List<Long> otherIds);
 
     @Query(value = """
-            SELECT u.id, u.nickname, u.profile_img
+            SELECT u.user_id, u.nickname, u.profile_img
             FROM users u
-            WHERE u.id IN (
-                SELECT CASE WHEN f1.requester_id = :userA THEN f1.receiver_id ELSE f1.requester_id END
+            WHERE u.user_id IN (
+                SELECT CASE WHEN f1.request_id = :userA THEN f1.receiver_id ELSE f1.request_id END
                 FROM friend f1
                 WHERE f1.status = 'ACCEPTED'
-                  AND (f1.requester_id = :userA OR f1.receiver_id = :userA)
+                  AND (f1.request_id = :userA OR f1.receiver_id = :userA)
             )
-            AND u.id IN (
-                SELECT CASE WHEN f2.requester_id = :userB THEN f2.receiver_id ELSE f2.requester_id END
+            AND u.user_id IN (
+                SELECT CASE WHEN f2.request_id = :userB THEN f2.receiver_id ELSE f2.request_id END
                 FROM friend f2
                 WHERE f2.status = 'ACCEPTED'
-                  AND (f2.requester_id = :userB OR f2.receiver_id = :userB)
+                  AND (f2.request_id = :userB OR f2.receiver_id = :userB)
             )
             """, nativeQuery = true)
     List<Object[]> findMutualFriends(@Param("userA") Long userA, @Param("userB") Long userB);
