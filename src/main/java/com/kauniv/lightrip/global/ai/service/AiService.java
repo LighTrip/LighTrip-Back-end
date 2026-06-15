@@ -39,8 +39,9 @@ public class AiService {
                 // > 코사인 유사도 기준 상위 3개 과거 기록 텍스트 조회.
 
                 if (!similarContents.isEmpty()) {
-                    AiResponse aiResponse = aiClient.generateWithContext(imageUrl, similarContents, authorization);
-                    // > 이미지 + 과거 기록 3개를 FastAPI /generate-blog에 전달.
+                    String references = String.join("\n---\n", similarContents);
+                    // > 유사 기록 3개를 구분자로 연결 → FastAPI references 필드로 전달 (text와 별도 입력).
+                    AiResponse aiResponse = aiClient.generate(imageUrl, text, references, authorization);
 
                     if (aiResponse != null) {
                         return new AiDraftResponse(aiResponse.draft(), parseCategory(aiResponse.category()));
@@ -49,8 +50,8 @@ public class AiService {
             }
         }
 
-        // fallback: 기존 이미지 + 텍스트 기반 초안 생성 (/pipeline/generate)
-        AiResponse aiResponse = aiClient.generate(imageUrl, text, authorization);
+        // fallback: references 없이 이미지 + 텍스트만으로 초안 생성
+        AiResponse aiResponse = aiClient.generate(imageUrl, text, null, authorization);
         if (aiResponse == null) {
             return new AiDraftResponse(null, null);
             // > AI 서버 장애 또는 stub 상태. 프론트에서 빈 값으로 처리.
