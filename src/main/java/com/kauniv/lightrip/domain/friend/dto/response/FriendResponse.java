@@ -79,5 +79,13 @@ public record FriendResponse(
                     user.getProfileImg()
             );
         }
+
+        public static MutualFriendInfo fromRow(Object[] row) {
+            return new MutualFriendInfo(
+                    ((Number) row[0]).longValue(),
+                    (String) row[1],
+                    (String) row[2]
+            );
+        }
     }
 }
