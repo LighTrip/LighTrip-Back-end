@@ -128,7 +128,7 @@ public class FriendService {
                     // 공통 친구 목록 조회
                     List<FriendResponse.MutualFriendInfo> mutualFriends =
                             friendRepository.findMutualFriends(userId, target.getId()).stream()
-                                    .map(FriendResponse.MutualFriendInfo::from)
+                                    .map(FriendResponse.MutualFriendInfo::fromRow)
                                     .toList();
 
                     return FriendResponse.from(friend, target, passportCount, mutualFriends);
@@ -235,7 +235,7 @@ public class FriendService {
                     // 공통 친구 목록 조회
                     List<FriendResponse.MutualFriendInfo> mutualFriends =
                             friendRepository.findMutualFriends(userId, user.getId()).stream()
-                                    .map(FriendResponse.MutualFriendInfo::from)
+                                    .map(FriendResponse.MutualFriendInfo::fromRow)
                                     .toList();
 
                     return FriendResponse.ofUser(user, passportCount, mutualFriends);
