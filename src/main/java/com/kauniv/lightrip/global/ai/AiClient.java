@@ -29,10 +29,10 @@ public class AiClient {
     private String aiServerUrl;
     // > application.properties의 ai.server.url 값 주입.
 
-    public AiResponse generate(String imageUrl, String text, String authorization) {
+    public AiResponse generate(String imageUrl, String text, String references, String authorization) {
         // > CloudFront URL에서 이미지를 다운로드해서 FastAPI로 multipart 전송.
-        // > text: 사용자가 입력한 메모 텍스트. 없으면 image만 전송.
-        // > authorization: 사용자 JWT를 AI 서버로 그대로 전달.
+        // > text: 사용자 메모. references: pgvector 유사 기록 (없으면 생략). authorization: JWT 전달.
+
 
         // 1. 이미지 다운로드
         byte[] imageBytes;
@@ -70,7 +70,10 @@ public class AiClient {
         if (text != null) {
             body.add("text", text);
         }
-        // > 프론트가 전달한 메모 텍스트를 함께 전송. 없으면 image만 전송.
+        if (references != null) {
+            body.add("references", references);
+        }
+        // > text: 사용자 메모. references: pgvector 유사 기록. AI가 각각 별도 입력으로 활용.
 
         // 4. FastAPI 호출
         try {
@@ -111,13 +114,4 @@ public class AiClient {
         }
     }
 
-    public AiResponse generateWithContext(String imageUrl, List<String> context, String authorization) {
-        // > 이미지 + 과거 기록 context를 함께 전송해서 개인화된 초안 생성.
-        // > authorization: FastAPI JWT 검증에 필요. generate()와 동일하게 전달.
-        // > [AI 팀 구현 후 추가] POST /generate-blog, multipart: image + context list, header: Authorization
-        // >   generate()의 이미지 다운로드 + multipart 구성 패턴 그대로 재사용.
-        log.warn("AI /generate-blog stub — AI 팀 구현 대기 중 (contextSize={})",
-                context != null ? context.size() : 0);
-        return null;
-    }
 }
