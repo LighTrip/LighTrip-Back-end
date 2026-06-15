@@ -1,7 +1,6 @@
 package com.kauniv.lightrip.domain.friend.repository;
 
 import com.kauniv.lightrip.domain.friend.entity.Friend;
-import com.kauniv.lightrip.domain.user.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -48,20 +47,21 @@ public interface FriendRepository extends JpaRepository<Friend, Long> {
     List<Long> findFriendUserIdsAmong(@Param("userId") Long userId,
                                       @Param("otherIds") List<Long> otherIds);
 
-    // 두 유저의 공통 친구 목록 조회
-    @Query("""
-            SELECT CASE WHEN f1.requester.id = :userA THEN f1.receiver ELSE f1.requester END
-            FROM Friend f1
-            WHERE f1.status = 'ACCEPTED'
-              AND (f1.requester.id = :userA OR f1.receiver.id = :userA)
-              AND (
-                CASE WHEN f1.requester.id = :userA THEN f1.receiver.id ELSE f1.requester.id END
-              ) IN (
-                SELECT CASE WHEN f2.requester.id = :userB THEN f2.receiver.id ELSE f2.requester.id END
-                FROM Friend f2
+    @Query(value = """
+            SELECT u.id, u.nickname, u.profile_img
+            FROM users u
+            WHERE u.id IN (
+                SELECT CASE WHEN f1.requester_id = :userA THEN f1.receiver_id ELSE f1.requester_id END
+                FROM friend f1
+                WHERE f1.status = 'ACCEPTED'
+                  AND (f1.requester_id = :userA OR f1.receiver_id = :userA)
+            )
+            AND u.id IN (
+                SELECT CASE WHEN f2.requester_id = :userB THEN f2.receiver_id ELSE f2.requester_id END
+                FROM friend f2
                 WHERE f2.status = 'ACCEPTED'
-                  AND (f2.requester.id = :userB OR f2.receiver.id = :userB)
-              )
-            """)
-    List<User> findMutualFriends(@Param("userA") Long userA, @Param("userB") Long userB);
+                  AND (f2.requester_id = :userB OR f2.receiver_id = :userB)
+            )
+            """, nativeQuery = true)
+    List<Object[]> findMutualFriends(@Param("userA") Long userA, @Param("userB") Long userB);
 }
