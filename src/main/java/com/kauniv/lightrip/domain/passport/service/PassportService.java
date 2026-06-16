@@ -120,7 +120,11 @@ public class PassportService {
         Passport passport = passportRepository.findById(passportId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
         validateReadPermission(passport, userId);
-        return PassportResponse.from(passport);
+        Long coverId = districtCoverRepository
+                .findByUser_IdAndDistrictCategory(passport.getUser().getId(), passport.getDistrictCategory())
+                .map(DistrictCover::getId)
+                .orElse(null);
+        return PassportResponse.from(passport, coverId);
     }
 
     // ========== 수정 ==========
@@ -243,7 +247,8 @@ public class PassportService {
                     DistrictCover cover = coverMap.get(district);
                     String thumbnailUrl = cover != null ? cover.getImageUrl() : null;
                     String textColor = cover != null ? cover.getTextColor() : null;
-                    return DistrictResponse.of(district, (Long) row[1], thumbnailUrl, textColor);
+                    Long coverId = cover != null ? cover.getId() : null;
+                    return DistrictResponse.of(district, (Long) row[1], thumbnailUrl, textColor, coverId);
                 })
                 .toList();
     }
