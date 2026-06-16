@@ -35,9 +35,16 @@ public record PassportResponse(
         Long scrapCount,
         List<String> stampUrls,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+
+        @Schema(description = "지역 커버 ID (커버 변경 시 사용). 커버가 없으면 null")
+        Long coverId
 ) {
     public static PassportResponse from(Passport p) {
+        return from(p, null);
+    }
+
+    public static PassportResponse from(Passport p, Long coverId) {
         List<String> urls = p.getImages().stream()
                 .map(PassportImage::getImageUrl)
                 .toList();
@@ -67,7 +74,8 @@ public record PassportResponse(
                 p.getScrapCount(),
                 stamps,
                 p.getCreatedAt(),
-                p.getUpdatedAt()
+                p.getUpdatedAt(),
+                coverId
         );
     }
 }
