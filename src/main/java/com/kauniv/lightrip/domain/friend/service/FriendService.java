@@ -11,7 +11,6 @@ import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
 import com.kauniv.lightrip.domain.passport.entity.DistrictCover;
 import com.kauniv.lightrip.domain.passport.repository.DistrictCoverRepository;
 import com.kauniv.lightrip.domain.passport.repository.PassportRepository;
-import com.kauniv.lightrip.domain.passport.repository.StampRepository;
 import com.kauniv.lightrip.domain.scrap.repository.ScrapRepository;
 import com.kauniv.lightrip.domain.user.entity.User;
 import com.kauniv.lightrip.domain.user.repository.UserRepository;
@@ -37,7 +36,6 @@ public class FriendService {
     private final FriendRepository friendRepository;
     private final UserRepository userRepository;
     private final PassportRepository passportRepository;
-    private final StampRepository stampRepository;
     private final DistrictCoverRepository districtCoverRepository;
     private final ScrapRepository scrapRepository;
 
@@ -112,15 +110,8 @@ public class FriendService {
                         : f.getRequester().getId())
                 .toList();
 
-        // 여권 수 일괄 조회
+        // 여권 수 = 도장 수 일괄 조회
         Map<Long, Long> passportCountMap = passportRepository.countByUserIds(targetIds).stream()
-                .collect(Collectors.toMap(
-                        row -> (Long) row[0],
-                        row -> (Long) row[1]
-                ));
-
-        // 도장 수 일괄 조회
-        Map<Long, Long> stampCountMap = stampRepository.countByUserIds(targetIds).stream()
                 .collect(Collectors.toMap(
                         row -> (Long) row[0],
                         row -> (Long) row[1]
@@ -133,7 +124,6 @@ public class FriendService {
                             : friend.getRequester();
 
                     Long passportCount = passportCountMap.getOrDefault(target.getId(), 0L);
-                    Long stampCount = stampCountMap.getOrDefault(target.getId(), 0L);
 
                     // 공통 친구 목록 조회
                     List<FriendResponse.MutualFriendInfo> mutualFriends =
@@ -141,7 +131,7 @@ public class FriendService {
                                     .map(FriendResponse.MutualFriendInfo::fromRow)
                                     .toList();
 
-                    return FriendResponse.from(friend, target, passportCount, stampCount, mutualFriends);
+                    return FriendResponse.from(friend, target, passportCount, mutualFriends);
                 })
                 .toList();
     }
@@ -158,7 +148,7 @@ public class FriendService {
         User user = userRepository.findByFriendCode(friendCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        return FriendResponse.ofUser(user, null, null, null);
+        return FriendResponse.ofUser(user, null, null);
     }
 
     public List<FriendPassportResponse> getFriendPassports(Long currentUserId,
@@ -232,15 +222,8 @@ public class FriendService {
             return List.of();
         }
 
-        // 여권 수 일괄 조회
+        // 여권 수 = 도장 수 일괄 조회
         Map<Long, Long> passportCountMap = passportRepository.countByUserIds(selectedIds).stream()
-                .collect(Collectors.toMap(
-                        row -> (Long) row[0],
-                        row -> (Long) row[1]
-                ));
-
-        // 도장 수 일괄 조회
-        Map<Long, Long> stampCountMap = stampRepository.countByUserIds(selectedIds).stream()
                 .collect(Collectors.toMap(
                         row -> (Long) row[0],
                         row -> (Long) row[1]
@@ -249,7 +232,6 @@ public class FriendService {
         return userRepository.findAllById(selectedIds).stream()
                 .map(user -> {
                     Long passportCount = passportCountMap.getOrDefault(user.getId(), 0L);
-                    Long stampCount = stampCountMap.getOrDefault(user.getId(), 0L);
 
                     // 공통 친구 목록 조회
                     List<FriendResponse.MutualFriendInfo> mutualFriends =
@@ -257,7 +239,7 @@ public class FriendService {
                                     .map(FriendResponse.MutualFriendInfo::fromRow)
                                     .toList();
 
-                    return FriendResponse.ofUser(user, passportCount, stampCount, mutualFriends);
+                    return FriendResponse.ofUser(user, passportCount, mutualFriends);
                 })
                 .toList();
     }
