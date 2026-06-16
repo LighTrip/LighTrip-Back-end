@@ -8,6 +8,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "AI", description = "AI 초안 생성 API")
@@ -19,18 +20,21 @@ public class AiController {
     private final AiService aiService;
     // > AI 초안 생성 비즈니스 로직 담당.
 
-    @Operation(summary = "AI 초안 생성", description = "이미지 URL과 설명 텍스트로 블로그 초안과 카테고리 초기값을 생성합니다.")
+    @Operation(summary = "AI 초안 생성",
+            description = "이미지 URL + 메모로 블로그 초안과 카테고리 초기값을 생성합니다. " +
+                    "text 전달 시 과거 기록 기반 RAG 경로로 개인화된 초안을 생성하며, " +
+                    "미전달 시 이미지 기반 기본 초안을 생성합니다.")
     @PostMapping("/draft")
     public ResponseEntity<AiDraftResponse> generateDraft(
             @RequestParam String imageUrl,
             @RequestParam(required = false) String text,
-            @Parameter(hidden = true) @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
+            // > 사용자가 입력한 메모 텍스트. RAG 경로 활성화 + FastAPI 전달에 사용. optional.
+            @Parameter(hidden = true) @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization,
+            // > 사용자 JWT. FastAPI AI 서버 인증에 사용.
+            @AuthenticationPrincipal Long userId
+            // > JWT에서 추출한 userId. 본인 과거 기록만 검색하기 위해 사용.
     ) {
-        // > 프론트가 S3 업로드 후 받은 CloudFront URL과 설명 텍스트를 전달.
-        // > 여권 등록 전에 호출해서 초안을 미리 보여주는 용도.
-        // > authorization: 사용자 JWT를 AI 서버로 그대로 전달.
-
-        AiDraftResponse response = aiService.generateDraft(imageUrl, text, authorization);
+        AiDraftResponse response = aiService.generateDraft(imageUrl, text, authorization, userId);
         return ResponseEntity.ok(response);
     }
 }

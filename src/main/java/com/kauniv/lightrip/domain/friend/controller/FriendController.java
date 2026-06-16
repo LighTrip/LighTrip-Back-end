@@ -7,6 +7,7 @@ import com.kauniv.lightrip.domain.friend.dto.response.FriendResponse;
 import com.kauniv.lightrip.domain.friend.service.FriendService;
 import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
 import com.kauniv.lightrip.global.common.response.ApiResponse;
+import com.kauniv.lightrip.global.enums.District;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -92,16 +93,17 @@ public class FriendController {
         return ApiResponse.success(response);
     }
 
-    @Operation(summary = "친구 여권 목록 조회", description = "친구의 공개(PUBLIC) 여권 목록을 조회합니다. ACCEPTED 상태의 친구만 조회 가능하며, PRIVATE 여권은 제외됩니다.")
+    @Operation(summary = "친구 여권 목록 조회", description = "친구의 공개(PUBLIC) 여권 목록을 조회합니다. ACCEPTED 상태의 친구만 조회 가능하며, PRIVATE 여권은 제외됩니다. district 파라미터로 지역 필터링 가능합니다.")
     @GetMapping("/{friendId}/passports")
     public ApiResponse<List<FriendPassportResponse>> getFriendPassports(
             @AuthenticationPrincipal Long userId,
             @Parameter(description = "조회할 친구의 userId") @PathVariable Long friendId,
+            @Parameter(description = "지역 필터 (ex. MAPO, YONGSAN) — 미입력 시 전체 조회") @RequestParam(required = false) District district,
             @PageableDefault(size = 20, sort = "visitedAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         List<FriendPassportResponse> response =
-                friendService.getFriendPassports(userId, friendId, pageable);
-        return ApiResponse.success(response); 
+                friendService.getFriendPassports(userId, friendId, district, pageable);
+        return ApiResponse.success(response);
     }
 
     @Operation(summary = "친구 지도 조회", description = "친구의 공개(PUBLIC) 여권 기준으로 방문한 지역 목록을 조회합니다. ACCEPTED 상태의 친구만 조회 가능합니다.")
