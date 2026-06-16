@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -99,7 +100,7 @@ public class FriendController {
             @AuthenticationPrincipal Long userId,
             @Parameter(description = "조회할 친구의 userId") @PathVariable Long friendId,
             @Parameter(description = "지역 필터 (ex. MAPO, YONGSAN) — 미입력 시 전체 조회") @RequestParam(required = false) District district,
-            @PageableDefault(size = 20, sort = "visitedAt", direction = Sort.Direction.DESC) Pageable pageable) {
+            @ParameterObject @PageableDefault(size = 20, sort = "visitedAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         List<FriendPassportResponse> response =
                 friendService.getFriendPassports(userId, friendId, district, pageable);
