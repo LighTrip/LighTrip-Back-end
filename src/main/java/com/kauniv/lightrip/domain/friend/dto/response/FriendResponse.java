@@ -16,6 +16,7 @@ public record FriendResponse(
         String status,
         LocalDateTime createdAt,
         Long passportCount,
+        Long stampCount,
         List<MutualFriendInfo> mutualFriends
 ) {
     public static FriendResponse from(Friend friend, User target) {
@@ -29,12 +30,14 @@ public record FriendResponse(
                 friend.getStatus().name(),
                 friend.getCreatedAt(),
                 null,
+                null,
                 null
         );
     }
 
     public static FriendResponse from(Friend friend, User target,
                                       Long passportCount,
+                                      Long stampCount,
                                       List<MutualFriendInfo> mutualFriends) {
         return new FriendResponse(
                 friend.getId(),
@@ -46,12 +49,14 @@ public record FriendResponse(
                 friend.getStatus().name(),
                 friend.getCreatedAt(),
                 passportCount,
+                stampCount,
                 mutualFriends
         );
     }
 
     public static FriendResponse ofUser(User user,
                                         Long passportCount,
+                                        Long stampCount,
                                         List<MutualFriendInfo> mutualFriends) {
         return new FriendResponse(
                 null,
@@ -63,6 +68,7 @@ public record FriendResponse(
                 null,
                 null,
                 passportCount,
+                stampCount,
                 mutualFriends
         );
     }
