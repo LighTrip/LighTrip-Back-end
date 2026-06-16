@@ -413,7 +413,7 @@ public class PassportService {
     // > 화면 폭의 1/50을 한 셀로 — 줌과 무관하게 항상 50칸 안팎의 격자로 클러스터링.
     // > 셀 내 1건이면 mapClusterRows에서 자동으로 단일 응답으로 떨어지므로 임계값 분기 불필요.
     private static double cellSizeForBBox(BigDecimal minLng, BigDecimal maxLng) {
-        return maxLng.subtract(minLng).doubleValue() / 50.0;
+        return maxLng.subtract(minLng).doubleValue() / 120.0;
     }
 
     // ========== 클러스터링 쿼리 결과 → LightResponse 매핑 ==========
