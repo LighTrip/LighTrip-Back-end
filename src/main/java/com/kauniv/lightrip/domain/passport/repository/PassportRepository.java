@@ -4,6 +4,8 @@ import com.kauniv.lightrip.global.enums.District;
 import java.util.Optional;
 import com.kauniv.lightrip.domain.passport.entity.Passport;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import org.springframework.data.jpa.repository.Query;
@@ -225,9 +227,11 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
         LEFT JOIN FETCH p.images
         WHERE p.user.id = :userId
           AND p.visibility = com.kauniv.lightrip.global.enums.Visibility.PUBLIC
+          AND (:district IS NULL OR p.districtCategory = :district)
         ORDER BY p.visitedAt DESC, p.id DESC
         """)
     List<Passport> findPublicPassportsByUserId(@Param("userId") Long userId,
+                                               @Param("district") District district,
                                                Pageable pageable);
 
     List<Passport> findAllByTeam_Id(Long teamId);
@@ -246,4 +250,28 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
     WHERE p.user.id = :userId
     """)
     long countDistinctDistrictByUserId(@Param("userId") Long userId);
+
+    @Modifying
+    @Transactional
+    @Query(value = "UPDATE passport SET embedding = CAST(:embedding AS vector) WHERE passport_id = :id",
+            nativeQuery = true)
+    void updateEmbedding(@Param("id") Long id, @Param("embedding") String embedding);
+    // > 여권 저장 후 비동기로 호출. EmbeddingGemma가 반환한 벡터를 pgvector 컬럼에 저장.
+    // > CAST(:embedding AS vector): "[0.1,0.2,...]" 형식의 문자열을 vector 타입으로 변환.
+
+    @Query(value = """
+            SELECT content FROM passport
+            WHERE user_id = :userId
+              AND embedding IS NOT NULL
+            ORDER BY embedding <=> CAST(:embedding AS vector)
+            LIMIT :limit
+            """, nativeQuery = true)
+    List<String> findSimilarContents(
+            @Param("userId") Long userId,
+            @Param("embedding") String embedding,
+            @Param("limit") int limit);
+    // > RAG 초안 생성 시 코사인 유사도 기준 상위 기록 텍스트 반환.
+    // > user_id 필터: 본인 기록만 검색 (타인 기록 유출 방지).
+    // > embedding IS NOT NULL: 아직 임베딩이 채워지지 않은 기록 제외.
+    // > <=>: pgvector 코사인 거리 연산자.
 }
