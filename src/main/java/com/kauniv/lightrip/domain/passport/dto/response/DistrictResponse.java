@@ -25,10 +25,6 @@ public record DistrictResponse(
         @Schema(description = "지역 커버 ID (커버 변경 시 사용). 커버가 없으면 null")
         Long coverId
 ) {
-    public static DistrictResponse of(District district, Long count, String thumbnailUrl, String textColor) {
-        return of(district, count, thumbnailUrl, textColor, null);
-    }
-
     public static DistrictResponse of(District district, Long count, String thumbnailUrl, String textColor, Long coverId) {
         return new DistrictResponse(
                 district,

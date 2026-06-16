@@ -188,7 +188,8 @@ public class FriendService {
                     DistrictCover cover = coverMap.get(district);
                     String thumbnailUrl = cover != null ? cover.getImageUrl() : null;
                     String textColor = cover != null ? cover.getTextColor() : null;
-                    return DistrictResponse.of(district, count, thumbnailUrl, textColor);
+                    Long coverId = cover != null ? cover.getId() : null;
+                    return DistrictResponse.of(district, count, thumbnailUrl, textColor, coverId);
                 })
                 .toList();
     }
