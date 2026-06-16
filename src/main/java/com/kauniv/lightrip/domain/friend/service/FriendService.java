@@ -124,7 +124,6 @@ public class FriendService {
                             : friend.getRequester();
 
                     Long passportCount = passportCountMap.getOrDefault(target.getId(), 0L);
-                    Long stampCount = passportCount;
 
                     // 공통 친구 목록 조회
                     List<FriendResponse.MutualFriendInfo> mutualFriends =
@@ -132,7 +131,7 @@ public class FriendService {
                                     .map(FriendResponse.MutualFriendInfo::fromRow)
                                     .toList();
 
-                    return FriendResponse.from(friend, target, passportCount, stampCount, mutualFriends);
+                    return FriendResponse.from(friend, target, passportCount, mutualFriends);
                 })
                 .toList();
     }
@@ -149,7 +148,7 @@ public class FriendService {
         User user = userRepository.findByFriendCode(friendCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        return FriendResponse.ofUser(user, null, null, null);
+        return FriendResponse.ofUser(user, null, null);
     }
 
     public List<FriendPassportResponse> getFriendPassports(Long currentUserId,
@@ -233,7 +232,6 @@ public class FriendService {
         return userRepository.findAllById(selectedIds).stream()
                 .map(user -> {
                     Long passportCount = passportCountMap.getOrDefault(user.getId(), 0L);
-                    Long stampCount = passportCount;
 
                     // 공통 친구 목록 조회
                     List<FriendResponse.MutualFriendInfo> mutualFriends =
@@ -241,7 +239,7 @@ public class FriendService {
                                     .map(FriendResponse.MutualFriendInfo::fromRow)
                                     .toList();
 
-                    return FriendResponse.ofUser(user, passportCount, stampCount, mutualFriends);
+                    return FriendResponse.ofUser(user, passportCount, mutualFriends);
                 })
                 .toList();
     }
