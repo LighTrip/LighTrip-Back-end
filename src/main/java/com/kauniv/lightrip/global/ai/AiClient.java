@@ -29,6 +29,10 @@ public class AiClient {
     private String aiServerUrl;
     // > application.properties의 ai.server.url 값 주입.
 
+    @Value("${ai.server.api-key}")
+    private String apiKey;
+    // > application.properties의 ai.server.api-key 값 주입 (AI 서버 인증용).
+
     public AiResponse generate(String imageUrl, String text, String references, String authorization) {
         // > CloudFront URL에서 이미지를 다운로드해서 FastAPI로 multipart 전송.
         // > text: 사용자 메모. references: pgvector 유사 기록 (없으면 생략). authorization: JWT 전달.
@@ -80,6 +84,7 @@ public class AiClient {
             return restClient.post()
                     .uri(aiServerUrl + "/pipeline/generate")
                     .header(HttpHeaders.AUTHORIZATION, authorization)
+                    .header("X-API-Key", apiKey) // > AI 서버 검증용 인증 키 추가
                     .contentType(MediaType.MULTIPART_FORM_DATA)
                     .body(body)
                     .retrieve()
@@ -101,6 +106,7 @@ public class AiClient {
             EmbeddingResponse response = restClient.post()
                     .uri(aiServerUrl + "/get-embedding")
                     .header(HttpHeaders.AUTHORIZATION, authorization)
+                    .header("X-API-Key", apiKey) // > AI 서버 검증용 인증 키 추가
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("texts", List.of(text)))
                     .retrieve()
