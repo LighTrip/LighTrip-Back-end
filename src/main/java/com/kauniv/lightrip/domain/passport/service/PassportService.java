@@ -237,11 +237,22 @@ public class PassportService {
         }
     }
 
+    // ========== 팀 멤버십 검증 ==========
+    private void validateTeamMembership(Long teamId, Long userId) {
+        if (!teamMemberRepository.existsByTeam_IdAndUser_Id(teamId, userId)) {
+            throw new BusinessException(ErrorCode.TEAM_NOT_MEMBER);
+        }
+    }
+
     // ========== 내 기록 지역 조회 ==========
-    public List<DistrictResponse> getMyDistricts(Long userId) {
-        List<Object[]> counts = passportRepository.countByUserIdGroupByDistrict(userId);
-        Map<District, DistrictCover> coverMap = districtCoverRepository.findAllByUser_Id(userId).stream()
-                .collect(Collectors.toMap(DistrictCover::getDistrictCategory, c -> c));
+    public List<DistrictResponse> getMyDistricts(Long userId, Long teamId) {
+        if (teamId != null) validateTeamMembership(teamId, userId);
+        List<Object[]> counts = passportRepository.countByUserIdGroupByDistrict(userId, teamId);
+        // 커버는 개인(user) 단위로만 존재 → 팀 모드에선 커버 정보 없음
+        Map<District, DistrictCover> coverMap = (teamId == null)
+                ? districtCoverRepository.findAllByUser_Id(userId).stream()
+                    .collect(Collectors.toMap(DistrictCover::getDistrictCategory, c -> c))
+                : Map.of();
         return counts.stream()
                 .map(row -> {
                     District district = (District) row[0];
@@ -255,12 +266,13 @@ public class PassportService {
     }
 
     // ========== 내 여권 목록 조회 ==========
-    public CursorResponse<PassportListResponse> getMyPassports(Long userId, Category category,
+    public CursorResponse<PassportListResponse> getMyPassports(Long userId, Long teamId, Category category,
                                                                District districtCategory,
                                                                Long cursor, int size) {
+        if (teamId != null) validateTeamMembership(teamId, userId);
         List<Passport> passports = (cursor == null)
-                ? passportRepository.findMyPassportsFirst(userId, category, districtCategory, PageRequest.of(0, size + 1))
-                : passportRepository.findMyPassportsAfterCursor(userId, cursor, category, districtCategory, PageRequest.of(0, size + 1));
+                ? passportRepository.findMyPassportsFirst(userId, teamId, category, districtCategory, PageRequest.of(0, size + 1))
+                : passportRepository.findMyPassportsAfterCursor(userId, teamId, cursor, category, districtCategory, PageRequest.of(0, size + 1));
         boolean hasNext = passports.size() > size;
         if (hasNext) passports = passports.subList(0, size);
         Long nextCursor = hasNext ? passports.get(passports.size() - 1).getId() : null;
@@ -268,12 +280,13 @@ public class PassportService {
     }
 
     // ========== 지역별 내 여권 상세 목록 조회 ==========
-    public CursorResponse<PassportResponse> getMyPassportDetailsByDistrict(Long userId,
+    public CursorResponse<PassportResponse> getMyPassportDetailsByDistrict(Long userId, Long teamId,
                                                                           District districtCategory,
                                                                           Long cursor, int size) {
+        if (teamId != null) validateTeamMembership(teamId, userId);
         List<Passport> passports = (cursor == null)
-                ? passportRepository.findMyPassportsFirst(userId, null, districtCategory, PageRequest.of(0, size + 1))
-                : passportRepository.findMyPassportsAfterCursor(userId, cursor, null, districtCategory, PageRequest.of(0, size + 1));
+                ? passportRepository.findMyPassportsFirst(userId, teamId, null, districtCategory, PageRequest.of(0, size + 1))
+                : passportRepository.findMyPassportsAfterCursor(userId, teamId, cursor, null, districtCategory, PageRequest.of(0, size + 1));
         boolean hasNext = passports.size() > size;
         if (hasNext) passports = passports.subList(0, size);
         Long nextCursor = hasNext ? passports.get(passports.size() - 1).getId() : null;
@@ -281,7 +294,17 @@ public class PassportService {
     }
 
     // ========== 내 여권 통계 조회 ==========
-    public PassportStatsResponse getMyStats(Long userId) {
+    public PassportStatsResponse getMyStats(Long userId, Long teamId) {
+        if (teamId != null) {
+            validateTeamMembership(teamId, userId);
+            // 팀 통계: 팀 여권 수 + 팀 여권이 받은 좋아요/스크랩 합계
+            Object[] row = passportRepository.findTeamStats(teamId).get(0);
+            return new PassportStatsResponse(
+                    ((Number) row[0]).longValue(),
+                    ((Number) row[1]).longValue(),
+                    ((Number) row[2]).longValue()
+            );
+        }
         return new PassportStatsResponse(
                 passportRepository.countByUser_Id(userId),
                 likeRepository.countByUser_Id(userId),
