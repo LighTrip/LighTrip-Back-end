@@ -52,3 +52,9 @@ tunnel.bat
 # k6 결과 파일
 k6/before.json
 k6/after.json
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.backup
+.terraform.lock.hcl
