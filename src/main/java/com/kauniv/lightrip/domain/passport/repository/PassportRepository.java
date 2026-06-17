@@ -30,11 +30,13 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
     @Query("""
         SELECT p.districtCategory, COUNT(p)
         FROM Passport p
-        WHERE p.user.id = :userId
+        WHERE ((:teamId IS NULL AND p.user.id = :userId)
+            OR (:teamId IS NOT NULL AND p.team.id = :teamId))
         GROUP BY p.districtCategory
         ORDER BY COUNT(p) DESC
         """)
-    List<Object[]> countByUserIdGroupByDistrict(Long userId);
+    // > teamId 미입력 시 개인(userId) 기준, 입력 시 팀 전체 멤버 여권 기준 집계.
+    List<Object[]> countByUserIdGroupByDistrict(Long userId, Long teamId);
 
     @Query("""
         SELECT p.districtCategory, COUNT(p)
@@ -49,12 +51,15 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
     @Query("""
         SELECT p FROM Passport p
         LEFT JOIN FETCH p.images
-        WHERE p.user.id = :userId
+        WHERE ((:teamId IS NULL AND p.user.id = :userId)
+            OR (:teamId IS NOT NULL AND p.team.id = :teamId))
           AND (:category IS NULL OR p.category = :category)
           AND (:districtCategory IS NULL OR p.districtCategory = :districtCategory)
         ORDER BY p.visitedAt DESC, p.id DESC
         """)
+    // > teamId 미입력 시 개인(userId), 입력 시 팀 전체 멤버 여권.
     List<Passport> findMyPassportsFirst(Long userId,
+                                        Long teamId,
                                         Category category,
                                         District districtCategory,
                                         Pageable pageable);
@@ -62,19 +67,31 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
     @Query("""
         SELECT p FROM Passport p
         LEFT JOIN FETCH p.images
-        WHERE p.user.id = :userId
+        WHERE ((:teamId IS NULL AND p.user.id = :userId)
+            OR (:teamId IS NOT NULL AND p.team.id = :teamId))
           AND p.id < :cursor
           AND (:category IS NULL OR p.category = :category)
           AND (:districtCategory IS NULL OR p.districtCategory = :districtCategory)
         ORDER BY p.visitedAt DESC, p.id DESC
         """)
     List<Passport> findMyPassportsAfterCursor(Long userId,
+                                              Long teamId,
                                               Long cursor,
                                               Category category,
                                               District districtCategory,
                                               Pageable pageable);
 
     long countByUser_Id(Long userId);
+
+    long countByTeam_Id(Long teamId);
+
+    @Query("""
+        SELECT COUNT(p), COALESCE(SUM(p.likeCount), 0), COALESCE(SUM(p.scrapCount), 0)
+        FROM Passport p
+        WHERE p.team.id = :teamId
+        """)
+    // > 팀 통계: 팀 여권 수 + 팀 여권이 받은 좋아요/스크랩 합계.
+    List<Object[]> findTeamStats(Long teamId);
 
     @Query(value = """
         SELECT t.passport_id, t.eff_score

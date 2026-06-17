@@ -127,12 +127,14 @@ public class PassportController {
     }
 
     @Operation(summary = "내 기록 지역 조회",
-            description = "내가 여권을 등록한 지역 목록을 조회합니다. 지역별 여권 수와 대표 이미지를 포함합니다.")
+            description = "내가 여권을 등록한 지역 목록을 조회합니다. 지역별 여권 수와 대표 이미지를 포함합니다. "
+                    + "teamId 입력 시 해당 팀의 여권 기준으로 조회합니다(팀 모드, 커버 정보는 없음).")
     @GetMapping("/districts/me")
     public ApiResponse<List<DistrictResponse>> getMyDistricts(
-            @AuthenticationPrincipal Long userId
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "팀 ID (팀 모드, 미입력 시 개인)") @RequestParam(required = false) Long teamId
     ) {
-        return ApiResponse.success(passportService.getMyDistricts(userId));
+        return ApiResponse.success(passportService.getMyDistricts(userId, teamId));
     }
 
     @Operation(
@@ -152,21 +154,24 @@ public class PassportController {
     @GetMapping("/me")
     public ApiResponse<CursorResponse<PassportListResponse>> getMyPassports(
             @AuthenticationPrincipal Long userId,
+            @Parameter(description = "팀 ID (팀 모드, 미입력 시 개인)") @RequestParam(required = false) Long teamId,
             @Parameter(description = "카테고리 필터 (선택)") @RequestParam(required = false) Category category,
             @Parameter(description = "지역 필터 (선택)") @RequestParam(required = false) District districtCategory,
             @Parameter(description = "커서 (이전 응답의 nextCursor 값). 첫 요청 시 생략") @RequestParam(required = false) Long cursor,
             @Parameter(description = "한 페이지에 가져올 여권 수 (기본값: 10, 최대: 50)") @RequestParam(defaultValue = "10") int size
     ) {
-        return ApiResponse.success(passportService.getMyPassports(userId, category, districtCategory, cursor, size));
+        return ApiResponse.success(passportService.getMyPassports(userId, teamId, category, districtCategory, cursor, size));
     }
 
     @Operation(summary = "내 여권 통계 조회",
-            description = "내가 작성한 여권 수, 좋아요 누른 수, 스크랩한 수를 조회합니다.")
+            description = "내가 작성한 여권 수, 좋아요 누른 수, 스크랩한 수를 조회합니다. "
+                    + "teamId 입력 시 팀 모드: 팀 여권 수 + 팀 여권이 받은 좋아요/스크랩 합계를 반환합니다.")
     @GetMapping("/stats/me")
     public ApiResponse<PassportStatsResponse> getMyStats(
-            @AuthenticationPrincipal Long userId
+            @AuthenticationPrincipal Long userId,
+            @Parameter(description = "팀 ID (팀 모드, 미입력 시 개인)") @RequestParam(required = false) Long teamId
     ) {
-        return ApiResponse.success(passportService.getMyStats(userId));
+        return ApiResponse.success(passportService.getMyStats(userId, teamId));
     }
 
     @Operation(summary = "카테고리별 내 여권 조회",
@@ -176,10 +181,11 @@ public class PassportController {
             @AuthenticationPrincipal Long userId,
             @Parameter(description = "카테고리 (CAFE, RESTAURANT, BAR, CULTURE, ACTIVITY, SHOPPING, NATURE, ETC)")
             @PathVariable Category category,
+            @Parameter(description = "팀 ID (팀 모드, 미입력 시 개인)") @RequestParam(required = false) Long teamId,
             @Parameter(description = "커서 (이전 응답의 nextCursor 값). 첫 요청 시 생략") @RequestParam(required = false) Long cursor,
             @Parameter(description = "한 페이지에 가져올 여권 수 (기본값: 10)") @RequestParam(defaultValue = "10") int size
     ) {
-        return ApiResponse.success(passportService.getMyPassports(userId, category, null, cursor, size));
+        return ApiResponse.success(passportService.getMyPassports(userId, teamId, category, null, cursor, size));
     }
 
     @Operation(summary = "지역별 내 여권 상세 조회",
@@ -197,11 +203,12 @@ public class PassportController {
             @AuthenticationPrincipal Long userId,
             @Parameter(description = "지역 카테고리 (MAPO, GANGNAM, YONGSAN 등)")
             @PathVariable District districtCategory,
+            @Parameter(description = "팀 ID (팀 모드, 미입력 시 개인)") @RequestParam(required = false) Long teamId,
             @Parameter(description = "커서 (이전 응답의 nextCursor 값). 첫 요청 시 생략") @RequestParam(required = false) Long cursor,
             @Parameter(description = "한 페이지에 가져올 여권 수 (기본값: 10)") @RequestParam(defaultValue = "10") int size
     ) {
         return ApiResponse.success(
-                passportService.getMyPassportDetailsByDistrict(userId, districtCategory, cursor, size)
+                passportService.getMyPassportDetailsByDistrict(userId, teamId, districtCategory, cursor, size)
         );
     }
 
