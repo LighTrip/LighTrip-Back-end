@@ -236,6 +236,10 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
 
     List<Passport> findAllByTeam_Id(Long teamId);
 
+    @Modifying
+    @Query("UPDATE Passport p SET p.team = null WHERE p.team.id = :teamId")
+    void clearTeamReference(@Param("teamId") Long teamId);
+
     @Query("""
     SELECT p.user.id, COUNT(p)
     FROM Passport p
