@@ -21,6 +21,8 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
@@ -137,9 +139,10 @@ public class PaymentService {
             expiry = base.plusMonths(p.getProductType().getMonths());
         }
 
-        LocalDateTime now = LocalDateTime.now();
-        boolean premium = expiry != null && expiry.isAfter(now);
-        Long daysLeft = premium ? ChronoUnit.DAYS.between(now, expiry) : null;
+        ZoneId zone = ZoneId.of("Asia/Seoul");
+        ZonedDateTime now = ZonedDateTime.now(zone);
+        boolean premium = expiry != null && expiry.atZone(zone).isAfter(now);
+        Long daysLeft = premium ? ChronoUnit.DAYS.between(now, expiry.atZone(zone)) : null;
 
         return PremiumStatusResponse.of(premium, expiry, daysLeft);
     }
