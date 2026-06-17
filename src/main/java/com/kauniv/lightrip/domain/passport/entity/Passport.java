@@ -106,6 +106,9 @@ public class Passport {
     @Column(name = "music_artist", length = 100)
     private String musicArtist;
 
+    @Column(name = "theme", length = 30)
+    private String theme;
+
     @Column(name = "like_count", nullable = false)
     @Builder.Default
     private Long likeCount = 0L;
@@ -124,7 +127,7 @@ public class Passport {
 
     public void update(String content, String spaceName, Category category,
                        District districtCategory, Visibility visibility,
-                       String musicTitle, String musicArtist) {
+                       String musicTitle, String musicArtist, String theme) {
         this.content = content;
         this.spaceName = spaceName;
         this.category = category;
@@ -132,6 +135,7 @@ public class Passport {
         this.visibility = visibility;
         this.musicTitle = musicTitle;
         this.musicArtist = musicArtist;
+        this.theme = theme;
     }
 
     public void replaceImages(List<String> imageUrls) {
