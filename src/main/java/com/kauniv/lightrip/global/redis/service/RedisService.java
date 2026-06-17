@@ -1,6 +1,7 @@
 package com.kauniv.lightrip.global.redis.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -9,6 +10,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RedisService {
@@ -38,7 +40,13 @@ public class RedisService {
     }
 
     public boolean isBlacklisted(String accessToken) {
-        return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + accessToken));
+        try {
+            return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + accessToken));
+        } catch (Exception e) {
+            log.warn("Redis 블랙리스트 조회 실패 — fail-open 처리 (token prefix={}...): {}",
+                    accessToken.length() > 10 ? accessToken.substring(0, 10) : accessToken, e.getMessage());
+            return false;
+        }
     }
 
     public void saveRefreshToken(Long userId, String refreshToken, long expirationMs) {
