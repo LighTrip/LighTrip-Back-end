@@ -6,6 +6,7 @@ import com.kauniv.lightrip.domain.team.dto.request.LocationMessage;
 import com.kauniv.lightrip.domain.team.dto.request.TeamCreateRequest;
 import com.kauniv.lightrip.domain.team.dto.request.TeamJoinRequest;
 import com.kauniv.lightrip.domain.team.dto.response.LiveLocationResponse;
+import com.kauniv.lightrip.domain.team.dto.response.MyTeamResponse;
 import com.kauniv.lightrip.domain.team.dto.response.TeamMemberResponse;
 import com.kauniv.lightrip.domain.team.dto.response.TeamResponse;
 import com.kauniv.lightrip.domain.team.entity.Team;
@@ -94,6 +95,14 @@ public class TeamService {
         Team team = teamRepository.findById(teamId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_FOUND));
         return TeamResponse.from(team);
+    }
+
+    public MyTeamResponse getMyTeam(Long userId) {
+        TeamMember membership = teamMemberRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_JOINED));
+        Team team = membership.getTeam();
+        List<TeamMember> members = teamMemberRepository.findAllByTeam_Id(team.getId());
+        return MyTeamResponse.of(team, members);
     }
 
     public List<TeamMemberResponse> getMembers(Long teamId) {

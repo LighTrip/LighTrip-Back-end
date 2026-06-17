@@ -4,6 +4,7 @@ import com.kauniv.lightrip.domain.team.dto.request.LocationSharingRequest;
 import com.kauniv.lightrip.domain.team.dto.request.TeamCreateRequest;
 import com.kauniv.lightrip.domain.team.dto.request.TeamJoinRequest;
 import com.kauniv.lightrip.domain.team.dto.response.LiveLocationResponse;
+import com.kauniv.lightrip.domain.team.dto.response.MyTeamResponse;
 import com.kauniv.lightrip.domain.team.dto.response.TeamMemberResponse;
 import com.kauniv.lightrip.domain.team.dto.response.TeamResponse;
 import com.kauniv.lightrip.domain.team.service.TeamService;
@@ -48,6 +49,14 @@ public class TeamController {
             @AuthenticationPrincipal Long userId,
             @RequestBody TeamJoinRequest req) {
         return ResponseEntity.ok(teamService.join(userId, req));
+    }
+
+    @Operation(summary = "내 팀 조회",
+            description = "로그인한 사용자가 소속된 팀 정보를 조회합니다. 팀 ID, 팀장, 전체 팀원 목록을 반환합니다. 소속된 팀이 없으면 404를 반환합니다.")
+    @GetMapping("/me")
+    public ResponseEntity<MyTeamResponse> getMyTeam(
+            @AuthenticationPrincipal Long userId) {
+        return ResponseEntity.ok(teamService.getMyTeam(userId));
     }
 
     @Operation(summary = "팀 정보 조회", description = "팀 ID로 팀 기본 정보를 조회합니다.")
