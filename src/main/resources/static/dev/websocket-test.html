@@ -22,24 +22,24 @@
 
 <div>
     <b>1. 토큰 발급</b><br>
-    userId: <input id="userId" value="1" style="width:80px">
+    <label for="userId">userId:</label> <input id="userId" value="1" style="width:80px">
     <button onclick="getToken()">토큰 발급</button>
     <span id="tokenDisplay"></span>
 </div>
 <br>
 <div>
     <b>2. WebSocket 연결</b><br>
-    teamId: <input id="teamId" value="1" style="width:80px">
+    <label for="teamId">teamId:</label> <input id="teamId" value="1" style="width:80px">
     <button onclick="connect()">연결</button>
     <button onclick="disconnect()">연결 끊기</button>
 </div>
 <br>
 <div>
     <b>3. 위치 전송</b><br>
-    nickname: <input id="nickname" value="테스트유저" style="width:120px">
-    latitude: <input id="lat" value="37.4979" style="width:100px">
-    longitude: <input id="lng" value="127.0276" style="width:100px">
-    placeName: <input id="place" value="강남역" style="width:100px">
+    <label for="nickname">nickname:</label> <input id="nickname" value="테스트유저" style="width:120px">
+    <label for="lat">latitude:</label> <input id="lat" value="37.4979" style="width:100px">
+    <label for="lng">longitude:</label> <input id="lng" value="127.0276" style="width:100px">
+    <label for="place">placeName:</label> <input id="place" value="강남역" style="width:100px">
     <button onclick="sendLocation()">위치 전송</button>
 </div>
 <br>
