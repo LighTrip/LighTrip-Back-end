@@ -1,5 +1,6 @@
 package com.kauniv.lightrip.domain.passport.entity;
 
+import com.kauniv.lightrip.domain.team.entity.Team;
 import com.kauniv.lightrip.domain.user.entity.User;
 import com.kauniv.lightrip.global.enums.District;
 import jakarta.persistence.*;
@@ -14,15 +15,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(
-        name = "district_cover",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_district_cover_user_district",
-                        columnNames = {"user_id", "district_category"}
-                )
-        }
-)
+@Table(name = "district_cover")
+// > 유니크 제약은 개인/팀 부분 인덱스(uk_district_cover_user_district, uk_district_cover_team_district)로 DB에서 관리.
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
@@ -35,8 +29,14 @@ public class DistrictCover {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @JoinColumn(name = "user_id")
     private User user;
+    // > 개인 커버의 작성자. 팀 커버이면 null (팀 단위로 관리).
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "team_id")
+    private Team team;
+    // > null이면 개인 커버, 값이 있으면 팀 커버.
 
     @Column(name = "image_url", columnDefinition = "TEXT", nullable = false)
     private String imageUrl;
@@ -66,5 +66,9 @@ public class DistrictCover {
 
     public void changeTextColor(String textColor) {
         this.textColor = textColor;
+    }
+
+    public boolean isTeamCover() {
+        return this.team != null;
     }
 }
