@@ -295,20 +295,22 @@ public class PassportService {
     public FeedCursorResponse<FeedPassportResponse> getFeed(
             Long userId, Category category, District district,
             BigDecimal latitude, BigDecimal longitude,
-            int radius, Long cursor, Long cursorScore, int size) {
+            int radius, String seed, Long cursor, Long cursorScore, int size) {
 
         validateLocation(latitude, longitude);
 
-        List<Long> candidateIds = passportRepository.findFeedPassportIds(
+        List<Object[]> rows = passportRepository.findFeedPassportIds(
                 userId, category != null ? category.name() : null,
                 district != null ? district.name() : null,
-                latitude, longitude, radius, cursor, cursorScore, size + 1
+                latitude, longitude, radius, seed, cursor, cursorScore, size + 1
         );
 
-        if (candidateIds.isEmpty()) return FeedCursorResponse.of(List.of(), false, null, null);
+        if (rows.isEmpty()) return FeedCursorResponse.of(List.of(), false, null, null);
 
-        boolean hasNext = candidateIds.size() > size;
-        if (hasNext) candidateIds = candidateIds.subList(0, size);
+        boolean hasNext = rows.size() > size;
+        if (hasNext) rows = rows.subList(0, size);
+
+        List<Long> candidateIds = rows.stream().map(r -> ((Number) r[0]).longValue()).toList();
 
         List<Passport> passports = passportRepository.findAllByIdsForFeed(candidateIds);
         Map<Long, Passport> passportMap = passports.stream().collect(Collectors.toMap(Passport::getId, p -> p));
@@ -329,10 +331,10 @@ public class PassportService {
 
         Long nextCursor = null;
         Long nextCursorScore = null;
-        if (hasNext && !content.isEmpty()) {
-            FeedPassportResponse last = content.get(content.size() - 1);
-            nextCursor = last.passportId();
-            nextCursorScore = last.popularityScore();
+        if (hasNext) {
+            Object[] lastRow = rows.get(rows.size() - 1);
+            nextCursor = ((Number) lastRow[0]).longValue();
+            nextCursorScore = ((Number) lastRow[1]).longValue();
         }
 
         return FeedCursorResponse.of(content, hasNext, nextCursor, nextCursorScore);

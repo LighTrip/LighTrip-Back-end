@@ -206,7 +206,9 @@ public class PassportController {
     }
 
     @Operation(summary = "릴스형 여권 피드 조회",
-            description = "다른 사용자의 PUBLIC 여권을 인기순으로 조회합니다. 카테고리/지역/위치 필터 지원, 커서 기반 무한스크롤.")
+            description = "다른 사용자의 PUBLIC 여권을 인기순(+약간의 랜덤)으로 조회합니다. 카테고리/지역/위치 필터 지원, 커서 기반 무한스크롤. "
+                    + "seed를 보내면 인기순을 유지하면서 비슷한 점수끼리 섞여 매번 다른 순서가 됩니다. "
+                    + "무한스크롤 동안에는 같은 seed를 유지하고, 새로고침 시 새 seed를 생성하세요. 미입력 시 순수 인기순입니다.")
     @GetMapping("/feed")
     public ApiResponse<FeedCursorResponse<FeedPassportResponse>> getFeed(
             @AuthenticationPrincipal Long userId,
@@ -215,13 +217,14 @@ public class PassportController {
             @Parameter(description = "사용자 위도") @RequestParam(required = false) BigDecimal latitude,
             @Parameter(description = "사용자 경도") @RequestParam(required = false) BigDecimal longitude,
             @Parameter(description = "반경(km), 기본 5") @RequestParam(defaultValue = "5") int radius,
+            @Parameter(description = "셔플 시드 (피드 세션마다 동일 값 유지, 미입력 시 인기순)") @RequestParam(required = false) String seed,
             @Parameter(description = "커서 (마지막 여권 ID)") @RequestParam(required = false) Long cursor,
-            @Parameter(description = "커서 점수 (마지막 인기 점수)") @RequestParam(required = false) Long cursorScore,
+            @Parameter(description = "커서 점수 (마지막 응답의 nextCursorScore)") @RequestParam(required = false) Long cursorScore,
             @Parameter(description = "조회 개수, 기본 10") @RequestParam(defaultValue = "10") int size
     ) {
         return ApiResponse.success(
                 passportService.getFeed(userId, category, district, latitude, longitude,
-                        radius, cursor, cursorScore, size)
+                        radius, seed, cursor, cursorScore, size)
         );
     }
 
