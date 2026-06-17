@@ -38,7 +38,10 @@ public record PassportResponse(
         LocalDateTime updatedAt,
 
         @Schema(description = "지역 커버 ID (커버 변경 시 사용). 커버가 없으면 null")
-        Long coverId
+        Long coverId,
+
+        @Schema(description = "테마 색상 RGB 값. 없으면 null", example = "255,87,51", nullable = true)
+        String theme
 ) {
     public static PassportResponse from(Passport p) {
         return from(p, null);
@@ -75,7 +78,8 @@ public record PassportResponse(
                 stamps,
                 p.getCreatedAt(),
                 p.getUpdatedAt(),
-                coverId
+                coverId,
+                p.getTheme()
         );
     }
 }

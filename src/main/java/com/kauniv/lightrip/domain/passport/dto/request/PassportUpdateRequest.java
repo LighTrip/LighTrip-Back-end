@@ -42,5 +42,9 @@ public record PassportUpdateRequest(
 
         @Schema(description = "음악 아티스트")
         @Size(max = 100)
-        String musicArtist
+        String musicArtist,
+
+        @Schema(description = "테마 색상 RGB 값. 생략 또는 null 허용. 예: \"255,87,51\"", nullable = true, example = "255,87,51")
+        @Size(max = 30)
+        String theme
 ) {}
