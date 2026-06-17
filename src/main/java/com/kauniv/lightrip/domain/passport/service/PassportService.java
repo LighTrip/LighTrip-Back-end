@@ -99,6 +99,7 @@ public class PassportService {
                 .visibility(req.visibilityOrDefault())
                 .musicTitle(req.musicTitle())
                 .musicArtist(req.musicArtist())
+                .theme(req.theme())
                 .build();
 
         passportRepository.save(passport);
@@ -134,7 +135,7 @@ public class PassportService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
         validateUpdatePermission(passport, userId);
         passport.update(req.content(), req.spaceName(), req.category(),
-                req.districtCategory(), req.visibility(), req.musicTitle(), req.musicArtist());
+                req.districtCategory(), req.visibility(), req.musicTitle(), req.musicArtist(), req.theme());
         passport.replaceImages(req.imageUrls());
         return PassportResponse.from(passport);
     }
