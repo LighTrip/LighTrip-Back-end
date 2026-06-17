@@ -1,0 +1,1 @@
+ALTER TABLE passport ADD COLUMN theme VARCHAR(30);

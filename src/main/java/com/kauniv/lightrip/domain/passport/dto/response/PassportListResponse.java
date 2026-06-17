@@ -42,7 +42,10 @@ public record PassportListResponse(
         Long likeCount,
 
         @Schema(description = "스크랩 수", example = "5")
-        Long scrapCount
+        Long scrapCount,
+
+        @Schema(description = "테마 색상 RGB 값. 없으면 null", example = "255,87,51", nullable = true)
+        String theme
 ) {
     public static PassportListResponse from(Passport p) {
         String thumbnail = p.getImages().isEmpty()
@@ -60,7 +63,8 @@ public record PassportListResponse(
                 p.getVisitedAt(),
                 p.getVisibility(),
                 p.getLikeCount(),
-                p.getScrapCount()
+                p.getScrapCount(),
+                p.getTheme()
         );
     }
 }

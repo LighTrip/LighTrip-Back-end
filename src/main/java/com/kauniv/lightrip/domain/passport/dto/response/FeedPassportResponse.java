@@ -37,7 +37,10 @@ public record FeedPassportResponse(
         boolean isLiked,
         boolean isScrapped,
         BigDecimal distanceKm,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+
+        @Schema(description = "테마 색상 RGB 값. 없으면 null", example = "255,87,51", nullable = true)
+        String theme
 ) {
     public static FeedPassportResponse of(
             Passport p,
@@ -73,7 +76,8 @@ public record FeedPassportResponse(
                 likedIds.contains(p.getId()),
                 scrappedIds.contains(p.getId()),
                 distanceKm,
-                p.getCreatedAt()
+                p.getCreatedAt(),
+                p.getTheme()
         );
     }
 }
