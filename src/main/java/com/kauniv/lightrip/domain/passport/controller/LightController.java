@@ -22,7 +22,6 @@ import java.util.List;
 public class LightController {
 
     private final PassportService passportService;
-
     @Operation(summary = "내 불빛 조회",
             description = """
                     지도 화면에 표시할 여권 좌표를 Bounding Box 범위 내에서 조회합니다.
