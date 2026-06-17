@@ -2,6 +2,8 @@ package com.kauniv.lightrip.global.auth.controller;
 
 import com.kauniv.lightrip.global.auth.dto.TokenResponse;
 import com.kauniv.lightrip.global.auth.service.AuthService;
+import com.kauniv.lightrip.global.common.exception.BusinessException;
+import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +36,9 @@ public class AuthController {
     public ResponseEntity<Void> logout(
             @AuthenticationPrincipal Long userId,
             @RequestHeader("Authorization") String bearerToken) {
+        if (!bearerToken.startsWith("Bearer ")) {
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
         String accessToken = bearerToken.substring(7);
         authService.logout(userId, accessToken);
         return ResponseEntity.ok().build();
@@ -44,6 +49,9 @@ public class AuthController {
     public ResponseEntity<Void> withdraw(
             @AuthenticationPrincipal Long userId,
             @RequestHeader("Authorization") String bearerToken) {
+        if (!bearerToken.startsWith("Bearer ")) {
+            throw new BusinessException(ErrorCode.INVALID_TOKEN);
+        }
         String accessToken = bearerToken.substring(7);
         authService.withdraw(userId, accessToken);
         return ResponseEntity.ok().build();
