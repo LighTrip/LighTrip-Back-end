@@ -2,8 +2,8 @@ environment = "dev"
 
 # TODO: prod.tfvars와 동일한 서브넷 사용 가능
 subnet_ids = [
-  "subnet-xxxxxxxxxxxxxxxxx",
-  "subnet-yyyyyyyyyyyyyyyyy",
+  "subnet-02dd370f201c22443",
+  "subnet-0ccf2d37ff8ee3fcf",
 ]
 
 task_cpu      = 256 # 0.25 vCPU
