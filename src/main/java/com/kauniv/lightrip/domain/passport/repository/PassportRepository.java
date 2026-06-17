@@ -77,38 +77,46 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
     long countByUser_Id(Long userId);
 
     @Query(value = """
-        SELECT p.passport_id
-        FROM passport p
-        WHERE p.user_id <> :userId
-          AND p.visibility = 'PUBLIC'
-          AND (CAST(:category AS varchar) IS NULL
-               OR p.category = CAST(:category AS varchar))
-          AND (CAST(:district AS varchar) IS NULL
-               OR p.district_category = CAST(:district AS varchar))
-          AND (
-            :latitude IS NULL OR :longitude IS NULL
-            OR ST_DWithin(
-                p.location::geography,
-                ST_SetSRID(ST_MakePoint(CAST(:longitude AS float), CAST(:latitude AS float)), 4326)::geography,
-                CAST(:radius AS float) * 1000
-            )
-          )
-          AND (
-            :cursor IS NULL OR :cursorScore IS NULL
-            OR (p.like_count * 2 + p.scrap_count * 3) < :cursorScore
-            OR ((p.like_count * 2 + p.scrap_count * 3) = :cursorScore
-                AND p.passport_id < :cursor)
-          )
-        ORDER BY (p.like_count * 2 + p.scrap_count * 3) DESC, p.passport_id DESC
+        SELECT t.passport_id, t.eff_score
+        FROM (
+            SELECT p.passport_id AS passport_id,
+                   (p.like_count * 2 + p.scrap_count * 3
+                    + CASE WHEN CAST(:seed AS varchar) IS NULL THEN 0
+                           ELSE (('x' || substr(md5(p.passport_id::text || CAST(:seed AS varchar)), 1, 8))::bit(32)::int % 5 + 5) % 5
+                      END) AS eff_score
+            FROM passport p
+            WHERE p.user_id <> :userId
+              AND p.visibility = 'PUBLIC'
+              AND (CAST(:category AS varchar) IS NULL
+                   OR p.category = CAST(:category AS varchar))
+              AND (CAST(:district AS varchar) IS NULL
+                   OR p.district_category = CAST(:district AS varchar))
+              AND (
+                :latitude IS NULL OR :longitude IS NULL
+                OR ST_DWithin(
+                    p.location::geography,
+                    ST_SetSRID(ST_MakePoint(CAST(:longitude AS float), CAST(:latitude AS float)), 4326)::geography,
+                    CAST(:radius AS float) * 1000
+                )
+              )
+        ) t
+        WHERE :cursor IS NULL OR :cursorScore IS NULL
+           OR t.eff_score < :cursorScore
+           OR (t.eff_score = :cursorScore AND t.passport_id < :cursor)
+        ORDER BY t.eff_score DESC, t.passport_id DESC
         LIMIT :limit
         """, nativeQuery = true)
-    List<Long> findFeedPassportIds(
+    // > eff_score = 인기점수(좋아요×2 + 스크랩×3) + 시드 기반 jitter(0~4).
+    // > seed 미입력 시 jitter=0 → 순수 인기순. seed 동일하면 페이지 간 순서 고정.
+    // > jitter 폭(현재 5)을 키우면 랜덤성이 강해짐.
+    List<Object[]> findFeedPassportIds(
             @Param("userId") Long userId,
             @Param("category") String category,
             @Param("district") String district,
             @Param("latitude") BigDecimal latitude,
             @Param("longitude") BigDecimal longitude,
             @Param("radius") int radius,
+            @Param("seed") String seed,
             @Param("cursor") Long cursor,
             @Param("cursorScore") Long cursorScore,
             @Param("limit") int limit
