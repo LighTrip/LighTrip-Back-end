@@ -23,8 +23,14 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
 
     boolean existsByUser_IdAndDistrictCategory(Long userId, District districtCategory);
 
-    Optional<Passport> findFirstByUser_IdAndDistrictCategoryOrderByCreatedAtDesc(
+    // 개인 커버 재계산용: 팀 여권은 제외(team IS NULL)하고 본인 개인 여권 중 최신 1건
+    Optional<Passport> findFirstByUser_IdAndTeamIsNullAndDistrictCategoryOrderByCreatedAtDesc(
             Long userId, District districtCategory
+    );
+
+    // 팀 커버 재계산용: 해당 팀의 여권 중 최신 1건
+    Optional<Passport> findFirstByTeam_IdAndDistrictCategoryOrderByCreatedAtDesc(
+            Long teamId, District districtCategory
     );
 
     @Query("""
