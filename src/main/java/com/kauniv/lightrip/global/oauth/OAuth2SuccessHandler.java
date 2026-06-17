@@ -2,6 +2,8 @@ package com.kauniv.lightrip.global.oauth;
 
 import com.kauniv.lightrip.global.auth.entity.Auth;
 import com.kauniv.lightrip.global.auth.repository.AuthRepository;
+import com.kauniv.lightrip.global.common.exception.BusinessException;
+import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import com.kauniv.lightrip.global.jwt.JwtProvider;
 import com.kauniv.lightrip.global.redis.service.RedisService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -44,7 +46,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         String refreshToken = jwtProvider.generateRefreshToken(userId);
 
         Auth auth = authRepository.findByUser_IdAndSocialType(userId, socialType)
-                .orElseThrow(() -> new RuntimeException("Auth를 찾을 수 없습니다."));
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         redisService.saveRefreshToken(userId, refreshToken, jwtProvider.getRefreshTokenExpiration());
 
