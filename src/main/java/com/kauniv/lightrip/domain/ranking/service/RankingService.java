@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -79,7 +80,7 @@ public class RankingService {
         rankingRepository.deleteAllInBatch();
 
         // 2. 이번 주 월요일 00:00 계산
-        LocalDateTime weekStartAt = LocalDateTime.now()
+        LocalDateTime weekStartAt = LocalDateTime.now(ZoneId.of("Asia/Seoul"))
                 .with(DayOfWeek.MONDAY)
                 .with(LocalTime.MIDNIGHT);
 

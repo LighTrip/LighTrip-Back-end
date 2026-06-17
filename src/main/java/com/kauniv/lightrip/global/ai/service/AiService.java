@@ -74,7 +74,7 @@ public class AiService {
             }
             passportRepository.updateEmbedding(passportId, toVectorString(embedding));
             log.info("임베딩 저장 완료 (passportId={})", passportId);
-        } catch (Exception e) {
+        } catch (RuntimeException e) {
             log.error("임베딩 저장 실패 (passportId={}): {}", passportId, e.getMessage());
         }
     }

@@ -13,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
 
 import java.util.List;
 import java.util.Map;
@@ -47,7 +48,7 @@ public class AiClient {
                     .toEntity(byte[].class);
             // > cdn.lightrip.cloud URL로 이미지 byte[] 다운로드.
             imageBytes = imageResponse.getBody();
-        } catch (Exception e) {
+        } catch (RestClientException e) {
             log.warn("AI 서버: 이미지 다운로드 실패 - {} : {}", imageUrl, e.getMessage());
             return null;
         }
@@ -91,7 +92,7 @@ public class AiClient {
                     .body(AiResponse.class);
             // > POST /pipeline/generate 호출 후 AiResponse로 역직렬화.
             // > AI 서버는 Authorization 헤더의 JWT를 검증.
-        } catch (Exception e) {
+        } catch (RestClientException e) {
             log.warn("AI /pipeline/generate 호출 실패: {}", e.getMessage());
             return null;
             // > FastAPI 500 등 오류 시 null 반환 → AiService에서 빈 초안으로 처리.
@@ -113,7 +114,7 @@ public class AiClient {
                     .body(EmbeddingResponse.class);
             float[] result = response != null ? response.firstEmbedding() : new float[0];
             return result.length > 0 ? result : null;
-        } catch (Exception e) {
+        } catch (RestClientException e) {
             log.warn("AI /get-embedding 호출 실패 (textLength={}): {}",
                     text != null ? text.length() : 0, e.getMessage());
             return null;
