@@ -1,6 +1,7 @@
 resource "aws_ecr_repository" "api" {
   name                 = "lightrip-api-${var.environment}"
-  image_tag_mutability = "MUTABLE"
+  # > IMMUTABLE: 동일 태그로 덮어쓰기 불가 — CI/CD에서 :latest 대신 커밋 SHA 태그 사용 필요
+  image_tag_mutability = "IMMUTABLE"
   force_delete         = false
 
   image_scanning_configuration {

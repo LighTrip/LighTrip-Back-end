@@ -1,3 +1,5 @@
+# ECS 클러스터 — prod/dev 각각 별도 클러스터로 분리
+# containerInsights: CloudWatch에 CPU/메모리/네트워크 메트릭 자동 수집
 resource "aws_ecs_cluster" "main" {
   name = "lightrip-${var.environment}"
 
@@ -9,6 +11,8 @@ resource "aws_ecs_cluster" "main" {
   tags = { Name = "lightrip-${var.environment}-cluster" }
 }
 
+# 현재 EC2의 CloudWatch Agent(/ec2/lightrip-server)와 별도로 ECS 전용 로그 그룹 생성
+# retention_in_days = 30: 로그 스토리지 비용 절감
 resource "aws_cloudwatch_log_group" "ecs" {
   name              = "/ecs/lightrip-${var.environment}"
   retention_in_days = 30
@@ -16,6 +20,9 @@ resource "aws_cloudwatch_log_group" "ecs" {
   tags = { Name = "lightrip-${var.environment}-logs" }
 }
 
+# Task Definition — 컨테이너 스펙 선언
+# environment: 민감하지 않은 값 (DB 호스트, 리전 등)
+# secrets: Secrets Manager에서 런타임에 주입 — 평문 노출 없음
 resource "aws_ecs_task_definition" "api" {
   family                   = "lightrip-${var.environment}"
   requires_compatibilities = ["FARGATE"]
@@ -73,6 +80,8 @@ resource "aws_ecs_task_definition" "api" {
   tags = { Name = "lightrip-${var.environment}-task" }
 }
 
+# ECS 서비스 — Task를 항상 desired_count만큼 유지, ALB와 연결해 Rolling Update 수행
+# assign_public_ip = true: NAT Gateway 없이 ECR pull + 외부 API 호출 가능 (ADR-1 비용 절감 원칙 유지)
 resource "aws_ecs_service" "api" {
   name            = "lightrip-${var.environment}-api"
   cluster         = aws_ecs_cluster.main.id
@@ -83,7 +92,7 @@ resource "aws_ecs_service" "api" {
   network_configuration {
     subnets          = var.subnet_ids
     security_groups  = [aws_security_group.ecs_task.id]
-    assign_public_ip = true
+    assign_public_ip = true #NOSONAR — NAT Gateway($30+/월) 없이 ECR pull 하기 위한 의도적 설정 (ADR-1 비용 절감)
   }
 
   load_balancer {
