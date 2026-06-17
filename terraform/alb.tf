@@ -8,6 +8,12 @@ resource "aws_lb" "api" {
   # WebSocket 연결 유지 — GPS 실시간 위치 공유용 (Redis TTL 5분과 동일)
   idle_timeout = 300
 
+  access_logs {
+    bucket  = "lightrip-s3"
+    prefix  = "alb/${var.environment}"
+    enabled = true
+  }
+
   tags = { Name = "lightrip-${var.environment}-alb" }
 }
 

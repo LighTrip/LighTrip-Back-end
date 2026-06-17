@@ -92,7 +92,7 @@ resource "aws_ecs_service" "api" {
   network_configuration {
     subnets          = var.subnet_ids
     security_groups  = [aws_security_group.ecs_task.id]
-    assign_public_ip = true
+    assign_public_ip = true #NOSONAR — NAT Gateway($30+/월) 없이 ECR pull 하기 위한 의도적 설정 (ADR-1 비용 절감)
   }
 
   load_balancer {
