@@ -12,6 +12,7 @@ import com.kauniv.lightrip.domain.team.entity.Team;
 import com.kauniv.lightrip.domain.team.entity.TeamMember;
 import com.kauniv.lightrip.domain.team.repository.TeamMemberRepository;
 import com.kauniv.lightrip.domain.team.repository.TeamRepository;
+import com.kauniv.lightrip.domain.passport.repository.PassportRepository;
 import com.kauniv.lightrip.domain.user.entity.User;
 import com.kauniv.lightrip.domain.user.repository.UserRepository;
 import com.kauniv.lightrip.global.common.exception.BusinessException;
@@ -34,6 +35,7 @@ public class TeamService {
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final UserRepository userRepository;
+    private final PassportRepository passportRepository;
     private final RedisTemplate<String, String> redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -109,7 +111,11 @@ public class TeamService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_MEMBER));
 
         if (member.getRole() == TeamMember.Role.LEADER) {
-            throw new BusinessException(ErrorCode.TEAM_LEADER_CANNOT_LEAVE);
+            // > LEADER 탈퇴 = 팀 해산. passport.team_id FK 제약 때문에 먼저 null 처리 후 삭제.
+            passportRepository.clearTeamReference(teamId);
+            teamMemberRepository.deleteAllByTeam_Id(teamId);
+            teamRepository.delete(member.getTeam());
+            return;
         }
 
         teamMemberRepository.delete(member);
