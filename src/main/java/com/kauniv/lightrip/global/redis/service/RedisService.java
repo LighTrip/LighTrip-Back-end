@@ -2,6 +2,7 @@ package com.kauniv.lightrip.global.redis.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
@@ -30,7 +31,7 @@ public class RedisService {
             }
             return sb.toString();
         } catch (NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 해싱 실패", e);
+            throw new IllegalStateException("SHA-256 해싱 실패", e);
         }
     }
 
@@ -42,7 +43,7 @@ public class RedisService {
     public boolean isBlacklisted(String accessToken) {
         try {
             return Boolean.TRUE.equals(redisTemplate.hasKey(BLACKLIST_PREFIX + accessToken));
-        } catch (Exception e) {
+        } catch (DataAccessException e) {
             log.warn("Redis 블랙리스트 조회 실패 — fail-open 처리 (token prefix={}...): {}",
                     accessToken.length() > 10 ? accessToken.substring(0, 10) : accessToken, e.getMessage());
             return false;
