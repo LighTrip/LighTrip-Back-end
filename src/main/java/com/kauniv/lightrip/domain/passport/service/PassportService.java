@@ -121,8 +121,11 @@ public class PassportService {
         Passport passport = passportRepository.findById(passportId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.PASSPORT_NOT_FOUND));
         validateReadPermission(passport, userId);
-        Long coverId = districtCoverRepository
-                .findByUser_IdAndDistrictCategory(passport.getUser().getId(), passport.getDistrictCategory())
+        Long coverId = (passport.isTeamPassport()
+                ? districtCoverRepository.findByTeam_IdAndDistrictCategory(
+                        passport.getTeam().getId(), passport.getDistrictCategory())
+                : districtCoverRepository.findByUser_IdAndDistrictCategory(
+                        passport.getUser().getId(), passport.getDistrictCategory()))
                 .map(DistrictCover::getId)
                 .orElse(null);
         return PassportResponse.from(passport, coverId);
@@ -162,11 +165,16 @@ public class PassportService {
             throw new BusinessException(ErrorCode.PASSPORT_FORBIDDEN);
         }
         District district = passport.getDistrictCategory();
+        Team team = passport.getTeam();
         likeRepository.deleteAllByPassportId(passportId);
         scrapRepository.deleteAllByPassportId(passportId);
         passportRepository.delete(passport);
         passportRepository.flush();
-        cleanupDistrictCover(userId, district);
+        if (team != null) {
+            cleanupTeamDistrictCover(team.getId(), district);
+        } else {
+            cleanupDistrictCover(userId, district);
+        }
     }
 
     // ========== 외부 Service용 공개 메서드 ==========
@@ -178,24 +186,52 @@ public class PassportService {
     }
 
     // ========== DistrictCover 자동 생성 ==========
+    // > 팀 여권이면 팀 커버(user=null, team=값), 개인 여권이면 개인 커버(user=값, team=null) 생성.
     private void createDistrictCoverIfFirst(User user, Passport passport) {
         District district = passport.getDistrictCategory();
-        if (!districtCoverRepository.existsByUser_IdAndDistrictCategory(user.getId(), district)) {
-            String firstImageUrl = passport.getImages().get(0).getImageUrl();
-            DistrictCover cover = DistrictCover.builder()
-                    .user(user)
-                    .imageUrl(firstImageUrl)
-                    .districtCategory(district)
-                    .build();
-            districtCoverRepository.save(cover);
+        String firstImageUrl = passport.getImages().get(0).getImageUrl();
+
+        if (passport.isTeamPassport()) {
+            Team team = passport.getTeam();
+            if (!districtCoverRepository.existsByTeam_IdAndDistrictCategory(team.getId(), district)) {
+                districtCoverRepository.save(DistrictCover.builder()
+                        .team(team)
+                        .imageUrl(firstImageUrl)
+                        .districtCategory(district)
+                        .build());
+            }
+        } else {
+            if (!districtCoverRepository.existsByUser_IdAndDistrictCategory(user.getId(), district)) {
+                districtCoverRepository.save(DistrictCover.builder()
+                        .user(user)
+                        .imageUrl(firstImageUrl)
+                        .districtCategory(district)
+                        .build());
+            }
         }
     }
 
-    // ========== DistrictCover 정리 (삭제 시) ==========
+    // ========== DistrictCover 정리 (개인 여권 삭제 시) ==========
     private void cleanupDistrictCover(Long userId, District district) {
         districtCoverRepository.findByUser_IdAndDistrictCategory(userId, district)
                 .ifPresent(cover -> {
-                    passportRepository.findFirstByUser_IdAndDistrictCategoryOrderByCreatedAtDesc(userId, district)
+                    passportRepository.findFirstByUser_IdAndTeamIsNullAndDistrictCategoryOrderByCreatedAtDesc(userId, district)
+                            .ifPresentOrElse(
+                                    latestPassport -> {
+                                        if (!latestPassport.getImages().isEmpty()) {
+                                            cover.changeCoverImage(latestPassport.getImages().get(0).getImageUrl());
+                                        }
+                                    },
+                                    () -> districtCoverRepository.delete(cover)
+                            );
+                });
+    }
+
+    // ========== DistrictCover 정리 (팀 여권 삭제 시) ==========
+    private void cleanupTeamDistrictCover(Long teamId, District district) {
+        districtCoverRepository.findByTeam_IdAndDistrictCategory(teamId, district)
+                .ifPresent(cover -> {
+                    passportRepository.findFirstByTeam_IdAndDistrictCategoryOrderByCreatedAtDesc(teamId, district)
                             .ifPresentOrElse(
                                     latestPassport -> {
                                         if (!latestPassport.getImages().isEmpty()) {
@@ -248,11 +284,12 @@ public class PassportService {
     public List<DistrictResponse> getMyDistricts(Long userId, Long teamId) {
         if (teamId != null) validateTeamMembership(teamId, userId);
         List<Object[]> counts = passportRepository.countByUserIdGroupByDistrict(userId, teamId);
-        // 커버는 개인(user) 단위로만 존재 → 팀 모드에선 커버 정보 없음
-        Map<District, DistrictCover> coverMap = (teamId == null)
-                ? districtCoverRepository.findAllByUser_Id(userId).stream()
-                    .collect(Collectors.toMap(DistrictCover::getDistrictCategory, c -> c))
-                : Map.of();
+        // 개인 모드는 개인 커버, 팀 모드는 팀 커버를 지역별로 매핑
+        Map<District, DistrictCover> coverMap = ((teamId == null)
+                ? districtCoverRepository.findAllByUser_Id(userId)
+                : districtCoverRepository.findAllByTeam_Id(teamId))
+                .stream()
+                .collect(Collectors.toMap(DistrictCover::getDistrictCategory, c -> c));
         return counts.stream()
                 .map(row -> {
                     District district = (District) row[0];
