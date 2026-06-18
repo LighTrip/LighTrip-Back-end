@@ -55,7 +55,7 @@ public class RankingController {
     )
     @GetMapping("/districts/{district}")
     public ApiResponse<List<RankingResponse>> getDistrictRanking(
-            @Parameter(description = "지역 카테고리 (MAPO, GANGNAM, YONGSAN 등)")
+            @Parameter(description = "지역 카테고리 (MAPO, GANGNAM, SEONGNAM_BUNDANG 등)")
             @PathVariable District district
     ) {
         return ApiResponse.success(rankingService.getDistrictRanking(district));
