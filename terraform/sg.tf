@@ -83,5 +83,5 @@ resource "aws_security_group_rule" "rds_from_ecs" {
   protocol                 = "tcp"
   security_group_id        = var.rds_security_group_id
   source_security_group_id = aws_security_group.ecs_task.id
-  description              = "ECS Task -> RDS"
+  description              = "ECS Task to RDS"
 }

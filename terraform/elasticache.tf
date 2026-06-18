@@ -18,10 +18,5 @@ resource "aws_elasticache_cluster" "redis" {
   subnet_group_name    = aws_elasticache_subnet_group.redis.name
   security_group_ids   = [aws_security_group.elasticache.id]
 
-  at_rest_encryption_enabled = true
-  # > transit_encryption_enabled 적용 시 Spring Boot Redis 클라이언트에 SSL 설정 필요
-  # > application.properties: spring.data.redis.ssl.enabled=true
-  transit_encryption_enabled = true
-
   tags = { Name = "lightrip-${var.environment}-redis" }
 }
