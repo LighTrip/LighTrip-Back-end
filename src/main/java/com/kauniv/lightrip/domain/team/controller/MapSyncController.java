@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kauniv.lightrip.domain.team.dto.request.LocationMessage;
 import com.kauniv.lightrip.domain.team.repository.TeamMemberRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.messaging.handler.annotation.DestinationVariable;
 import org.springframework.messaging.handler.annotation.MessageMapping;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Controller;
 import java.time.Duration;
 import java.time.Instant;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class MapSyncController {
@@ -41,8 +43,15 @@ public class MapSyncController {
         // > 클라이언트가 보낸 message.getUserId()는 무시 — 위변조 방지
         Long userId = (Long) headerAccessor.getSessionAttributes().get("userId");
 
+        // > userId가 null = CONNECT 인증을 거치지 않은 비정상 연결. 멤버 조회 전에 차단.
+        if (userId == null) {
+            log.warn("위치 전송 거부 - 세션에 userId 없음 (teamId={})", teamId);
+            return;
+        }
+
         // > 해당 팀의 멤버인지 검증. 비멤버는 메시지 무시
         if (!teamMemberRepository.existsByTeam_IdAndUser_Id(teamId, userId)) {
+            log.warn("위치 전송 거부 - 팀 멤버 아님 (userId={}, teamId={})", userId, teamId);
             return;
         }
 
@@ -64,5 +73,9 @@ public class MapSyncController {
 
         // > 같은 팀 구독자 전원에게 브로드캐스트
         messagingTemplate.convertAndSend("/topic/team/" + teamId, verified);
+
+        // > 3초마다 호출되므로 DEBUG. 성공 흐름 추적용 (prod는 INFO 레벨이라 평소엔 안 찍힘)
+        log.debug("위치 브로드캐스트 (userId={}, teamId={}, lat={}, lng={})",
+                userId, teamId, message.getLatitude(), message.getLongitude());
     }
 }
