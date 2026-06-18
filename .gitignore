@@ -57,4 +57,4 @@ k6/after.json
 .terraform/
 *.tfstate
 *.tfstate.backup
-.terraform.lock.hcl
+terraform/plan.txt
