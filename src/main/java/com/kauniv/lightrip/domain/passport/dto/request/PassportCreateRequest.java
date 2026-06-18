@@ -99,7 +99,7 @@ public record PassportCreateRequest(
         Category category,
 
         @Schema(
-                description = "[필수] 권역 카테고리 enum. 서울 25구 + 경기 31시군 중 하나 (예: MAPO, GANGNAM, SUWON).",
+                description = "[필수] 권역 카테고리 enum. 서울 25구 + 경기 시·군(구가 있는 시는 구 단위) 중 하나 (예: MAPO, GANGNAM, SUWON_PALDAL).",
                 requiredMode = Schema.RequiredMode.REQUIRED,
                 example = "MAPO"
         )

@@ -34,16 +34,42 @@ public enum District {
     SONGPA("송파구"),
     GANGDONG("강동구"),
 
-    // 경기도 (31개 시·군)
-    SUWON("수원시"),
-    SEONGNAM("성남시"),
-    GOYANG("고양시"),
-    YONGIN("용인시"),
-    BUCHEON("부천시"),
-    ANSAN("안산시"),
-    ANYANG("안양시"),
+    // 경기도 — 구가 있는 시는 구 단위
+    // 수원시
+    SUWON_JANGAN("수원 장안구"),
+    SUWON_GWONSEON("수원 권선구"),
+    SUWON_PALDAL("수원 팔달구"),
+    SUWON_YEONGTONG("수원 영통구"),
+    // 성남시
+    SEONGNAM_SUJEONG("성남 수정구"),
+    SEONGNAM_JUNGWON("성남 중원구"),
+    SEONGNAM_BUNDANG("성남 분당구"),
+    // 고양시
+    GOYANG_DEOKYANG("고양 덕양구"),
+    GOYANG_ILSANDONG("고양 일산동구"),
+    GOYANG_ILSANSEO("고양 일산서구"),
+    // 용인시
+    YONGIN_CHEOIN("용인 처인구"),
+    YONGIN_GIHEUNG("용인 기흥구"),
+    YONGIN_SUJI("용인 수지구"),
+    // 부천시
+    BUCHEON_WONMI("부천 원미구"),
+    BUCHEON_SOSA("부천 소사구"),
+    BUCHEON_OJEONG("부천 오정구"),
+    // 안산시
+    ANSAN_SANGNOK("안산 상록구"),
+    ANSAN_DANWON("안산 단원구"),
+    // 안양시
+    ANYANG_MANAN("안양 만안구"),
+    ANYANG_DONGAN("안양 동안구"),
+    // 화성시 (2026.2 구 신설)
+    HWASEONG_MANSE("화성 만세구"),
+    HWASEONG_HYOHAENG("화성 효행구"),
+    HWASEONG_BYEONGJEOM("화성 병점구"),
+    HWASEONG_DONGTAN("화성 동탄구"),
+
+    // 경기도 — 구가 없는 시·군
     NAMYANGJU("남양주시"),
-    HWASEONG("화성시"),
     PYEONGTAEK("평택시"),
     UIJEONGBU("의정부시"),
     SIHEUNG("시흥시"),
