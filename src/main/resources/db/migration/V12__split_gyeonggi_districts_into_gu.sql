@@ -1,5 +1,6 @@
 -- 경기도 구가 있는 8개 시(수원·성남·고양·용인·부천·안산·안양·화성)를 구 단위로 분리.
 -- 기존 시 단위 기록은 대표 구(시청 소재지)로 이전한다. 데이터가 없으면 UPDATE는 no-op.
+-- district_category의 CHECK 제약은 재생성하지 않는다(V13에서 제거되어 enum이 단일 진실 공급원이 됨).
 
 -- 1) 기존 CHECK 제약 제거 (새 구 값으로 UPDATE 하려면 먼저 풀어야 함)
 ALTER TABLE public.passport DROP CONSTRAINT IF EXISTS passport_district_category_check;
@@ -29,45 +30,3 @@ UPDATE public.district_cover SET district_category = CASE district_category
     WHEN 'HWASEONG' THEN 'HWASEONG_DONGTAN'
     ELSE district_category END
 WHERE district_category IN ('SUWON','SEONGNAM','GOYANG','YONGIN','BUCHEON','ANSAN','ANYANG','HWASEONG');
-
--- 3) 새 CHECK 제약 추가 (서울 25구 + 경기 구 24 + 경기 시·군 23)
-DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'passport_district_category_check') THEN
-        ALTER TABLE public.passport ADD CONSTRAINT passport_district_category_check CHECK (district_category IN (
-            'JONGNO','JUNG','YONGSAN','SEONGDONG','GWANGJIN','DONGDAEMUN','JUNGNANG','SEONGBUK','GANGBUK','DOBONG',
-            'NOWON','EUNPYEONG','SEODAEMUN','MAPO','YANGCHEON','GANGSEO','GURO','GEUMCHEON','YEONGDEUNGPO','DONGJAK',
-            'GWANAK','SEOCHO','GANGNAM','SONGPA','GANGDONG',
-            'SUWON_JANGAN','SUWON_GWONSEON','SUWON_PALDAL','SUWON_YEONGTONG',
-            'SEONGNAM_SUJEONG','SEONGNAM_JUNGWON','SEONGNAM_BUNDANG',
-            'GOYANG_DEOKYANG','GOYANG_ILSANDONG','GOYANG_ILSANSEO',
-            'YONGIN_CHEOIN','YONGIN_GIHEUNG','YONGIN_SUJI',
-            'BUCHEON_WONMI','BUCHEON_SOSA','BUCHEON_OJEONG',
-            'ANSAN_SANGNOK','ANSAN_DANWON',
-            'ANYANG_MANAN','ANYANG_DONGAN',
-            'HWASEONG_MANSE','HWASEONG_HYOHAENG','HWASEONG_BYEONGJEOM','HWASEONG_DONGTAN',
-            'NAMYANGJU','PYEONGTAEK','UIJEONGBU','SIHEUNG','PAJU','GIMPO','GWANGMYEONG','GWANGJU_GG','GUNPO','HANAM',
-            'OSAN','ICHEON','YANGJU','ANSEONG','GURI','POCHEON','UIWANG','YEOJU','DONGDUCHEON','GAPYEONG',
-            'YANGPYEONG','YEONCHEON','GWACHEON'
-        ));
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'district_cover_district_category_check') THEN
-        ALTER TABLE public.district_cover ADD CONSTRAINT district_cover_district_category_check CHECK (district_category IN (
-            'JONGNO','JUNG','YONGSAN','SEONGDONG','GWANGJIN','DONGDAEMUN','JUNGNANG','SEONGBUK','GANGBUK','DOBONG',
-            'NOWON','EUNPYEONG','SEODAEMUN','MAPO','YANGCHEON','GANGSEO','GURO','GEUMCHEON','YEONGDEUNGPO','DONGJAK',
-            'GWANAK','SEOCHO','GANGNAM','SONGPA','GANGDONG',
-            'SUWON_JANGAN','SUWON_GWONSEON','SUWON_PALDAL','SUWON_YEONGTONG',
-            'SEONGNAM_SUJEONG','SEONGNAM_JUNGWON','SEONGNAM_BUNDANG',
-            'GOYANG_DEOKYANG','GOYANG_ILSANDONG','GOYANG_ILSANSEO',
-            'YONGIN_CHEOIN','YONGIN_GIHEUNG','YONGIN_SUJI',
-            'BUCHEON_WONMI','BUCHEON_SOSA','BUCHEON_OJEONG',
-            'ANSAN_SANGNOK','ANSAN_DANWON',
-            'ANYANG_MANAN','ANYANG_DONGAN',
-            'HWASEONG_MANSE','HWASEONG_HYOHAENG','HWASEONG_BYEONGJEOM','HWASEONG_DONGTAN',
-            'NAMYANGJU','PYEONGTAEK','UIJEONGBU','SIHEUNG','PAJU','GIMPO','GWANGMYEONG','GWANGJU_GG','GUNPO','HANAM',
-            'OSAN','ICHEON','YANGJU','ANSEONG','GURI','POCHEON','UIWANG','YEOJU','DONGDUCHEON','GAPYEONG',
-            'YANGPYEONG','YEONCHEON','GWACHEON'
-        ));
-    END IF;
-END $$;
