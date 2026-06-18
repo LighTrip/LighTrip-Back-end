@@ -99,7 +99,7 @@ public class FriendController {
     public ApiResponse<List<FriendPassportResponse>> getFriendPassports(
             @AuthenticationPrincipal Long userId,
             @Parameter(description = "조회할 친구의 userId") @PathVariable Long friendId,
-            @Parameter(description = "지역 필터 (ex. MAPO, YONGSAN) — 미입력 시 전체 조회") @RequestParam(required = false) District district,
+            @Parameter(description = "지역 필터 (ex. MAPO, SEONGNAM_BUNDANG) — 미입력 시 전체 조회") @RequestParam(required = false) District district,
             @ParameterObject @PageableDefault(size = 20, sort = "visitedAt", direction = Sort.Direction.DESC) Pageable pageable) {
 
         List<FriendPassportResponse> response =
