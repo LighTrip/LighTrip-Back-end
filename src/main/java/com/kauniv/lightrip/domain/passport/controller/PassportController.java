@@ -46,7 +46,7 @@ public class PassportController {
                     | `address` | 전체 주소 (최대 50자) |
                     | `visitedAt` | 방문 날짜 (`YYYY-MM-DD`, 오늘 또는 과거만 허용) |
                     | `category` | 카테고리 enum (CAFE/RESTAURANT/BAR/CULTURE/ACTIVITY/SHOPPING/NATURE/ETC) |
-                    | `districtCategory` | 권역 enum (MAPO, GANGNAM 등 서울 25구 + 경기 31시군) |
+                    | `districtCategory` | 권역 enum. 서울 25구 + 경기 시·군(구가 있는 시는 구 단위) (예: MAPO, GANGNAM, SEONGNAM_BUNDANG) |
 
                     ### ⚙️ 선택 항목 (생략 가능 / null 허용)
                     | 필드 | 동작 |
@@ -144,7 +144,7 @@ public class PassportController {
                 
                 **필터링**
                 - `category`: 카테고리별 필터 (CAFE, RESTAURANT, BAR, TOURIST, NATURE, CULTURE, ACTIVITY, ACCOMMODATION, SHOPPING, ETC)
-                - `districtCategory`: 지역별 필터 (MAPO, GANGNAM, YONGSAN 등)
+                - `districtCategory`: 지역별 필터 (MAPO, GANGNAM, SEONGNAM_BUNDANG 등 — 경기 구가 있는 시는 구 단위)
                 
                 **페이징 (커서 기반 무한스크롤)**
                 - 첫 요청: `cursor` 파라미터 없이 호출
@@ -201,7 +201,7 @@ public class PassportController {
     @GetMapping("/districts/{districtCategory}")
     public ApiResponse<CursorResponse<PassportResponse>> getMyPassportDetailsByDistrict(
             @AuthenticationPrincipal Long userId,
-            @Parameter(description = "지역 카테고리 (MAPO, GANGNAM, YONGSAN 등)")
+            @Parameter(description = "지역 카테고리 (MAPO, GANGNAM, SEONGNAM_BUNDANG 등)")
             @PathVariable District districtCategory,
             @Parameter(description = "팀 ID (팀 모드, 미입력 시 개인)") @RequestParam(required = false) Long teamId,
             @Parameter(description = "커서 (이전 응답의 nextCursor 값). 첫 요청 시 생략") @RequestParam(required = false) Long cursor,
