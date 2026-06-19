@@ -1,7 +1,6 @@
 package com.kauniv.lightrip.global.auth.service;
 
 import com.kauniv.lightrip.domain.user.repository.UserRepository;
-import com.kauniv.lightrip.global.auth.repository.AuthRepository;
 import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import com.kauniv.lightrip.global.jwt.JwtProvider;
@@ -15,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class AuthService {
 
-    private final AuthRepository authRepository;
     private final JwtProvider jwtProvider;
     private final UserRepository userRepository;
     private final RedisService redisService;
@@ -47,12 +45,11 @@ public class AuthService {
     }
 
     public void withdraw(Long userId, String accessToken) {
+        userRepository.deleteById(userId); // DB CASCADE가 auth 포함 연관 데이터 전부 삭제
         long expiration = jwtProvider.getExpiration(accessToken);
         if (expiration > 0) {
             redisService.addBlacklist(accessToken, expiration);
         }
         redisService.deleteRefreshToken(userId);
-        authRepository.deleteByUser_Id(userId);
-        userRepository.deleteById(userId);
     }
 }
