@@ -120,8 +120,10 @@ public class TeamService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_MEMBER));
 
         if (member.getRole() == TeamMember.Role.LEADER) {
-            // > LEADER 탈퇴 = 팀 해산. passport.team_id FK 제약 때문에 먼저 null 처리 후 삭제.
-            passportRepository.clearTeamReference(teamId);
+            // > LEADER 탈퇴 = 팀 해산.
+            // > 팀 여권 먼저 삭제 (passport.team_id FK 제약 해제 + 팀 여권 제거).
+            // > district_cover 팀 커버는 team.team_id ON DELETE CASCADE (V15)로 연쇄 삭제.
+            passportRepository.deleteAllByTeamId(teamId);
             teamMemberRepository.deleteAllByTeam_Id(teamId);
             teamRepository.delete(member.getTeam());
             return;
