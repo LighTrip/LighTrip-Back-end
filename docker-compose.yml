@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile.db
+    container_name: lightrip-db
     environment:
       POSTGRES_DB: lightrip
       POSTGRES_USER: ${DB_USERNAME}
@@ -12,14 +13,25 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init:/docker-entrypoint-initdb.d
+    networks:
+      - lightrip-net
+    restart: always
 
   redis:
     image: redis:7-alpine
+    container_name: lightrip-redis
     ports:
       - "6379:6379"
     volumes:
       - redis_data:/data
+    networks:
+      - lightrip-net
+    restart: always
 
 volumes:
   postgres_data:
   redis_data:
+
+networks:
+  lightrip-net:
+    name: lightrip-net

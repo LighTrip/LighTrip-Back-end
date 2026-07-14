@@ -93,12 +93,3 @@ ALTER TABLE ONLY public.scrap
 ALTER TABLE ONLY public.scrap
     ADD CONSTRAINT fklsmigjultu7jx5u3f8diygwv3 FOREIGN KEY (passport_id) REFERENCES public.passport(passport_id) ON DELETE CASCADE;
 
--- =============================================
--- 3. passport_image 참조 FK → ON DELETE CASCADE
---    (passport_image 삭제 시 district_cover 연쇄 삭제)
--- =============================================
-
-ALTER TABLE ONLY public.district_cover
-    DROP CONSTRAINT fk5tnx93oul5yn1a2omidbwfcl6;
-ALTER TABLE ONLY public.district_cover
-    ADD CONSTRAINT fk5tnx93oul5yn1a2omidbwfcl6 FOREIGN KEY (passport_image_id) REFERENCES public.passport_image(passport_image_id) ON DELETE CASCADE;
