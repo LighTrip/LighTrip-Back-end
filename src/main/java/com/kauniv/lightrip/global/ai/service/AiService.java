@@ -12,6 +12,7 @@ import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataAccessException;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -67,11 +68,19 @@ public class AiService {
             return null;
         }
 
-        List<String> similarContents = passportRepository.findSimilarContents(
-                userId, toVectorString(embedding), REFERENCE_LIMIT);
-        // > 코사인 유사도 기준 상위 기록 텍스트 조회. user_id 필터로 본인 기록만 검색.
+        try {
+            List<String> similarContents = passportRepository.findSimilarContents(
+                    userId, toVectorString(embedding), REFERENCE_LIMIT);
+            // > 코사인 유사도 기준 상위 기록 텍스트 조회. user_id 필터로 본인 기록만 검색.
 
-        return similarContents.isEmpty() ? null : String.join("\n---\n", similarContents);
+            return similarContents.isEmpty() ? null : String.join("\n---\n", similarContents);
+        } catch (DataAccessException e) {
+            // > 참고자료 조회는 초안 품질을 높이는 부가 단계다. 여기서 실패해도 초안은 나와야 한다.
+            // > pgvector 미설치·embedding 컬럼 부재(마이그레이션 누락) 같은 환경 문제로 500이 나가면 안 됨.
+            log.warn("유사 기록 조회 실패 — 참고자료 없이 초안을 생성합니다 (userId={}): {}",
+                    userId, e.getMostSpecificCause().getMessage());
+            return null;
+        }
     }
 
     // > 임베딩 검색용 질의문. 초안 본문이 아직 없으므로 입력 정보를 이어붙여 대신 사용한다.
