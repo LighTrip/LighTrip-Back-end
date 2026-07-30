@@ -71,7 +71,12 @@ public enum ErrorCode {
     PAYMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "PAY002", "해당 결제 주문에 대한 권한이 없습니다."),
     PAYMENT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "PAY003", "이미 처리된 결제 주문입니다."),
     PAYMENT_AMOUNT_MISMATCH(HttpStatus.BAD_REQUEST, "PAY004", "결제 금액이 일치하지 않습니다."),
-    PAYMENT_CONFIRM_FAILED(HttpStatus.BAD_GATEWAY, "PAY005", "결제 승인에 실패했습니다.");
+    PAYMENT_CONFIRM_FAILED(HttpStatus.BAD_GATEWAY, "PAY005", "결제 승인에 실패했습니다."),
+
+    // ===== AI =====
+    AI_CALL_FAILED(HttpStatus.BAD_GATEWAY, "AI001", "AI 초안 생성에 실패했습니다."),
+    AI_RESPONSE_PARSE_FAILED(HttpStatus.BAD_GATEWAY, "AI002", "AI 응답을 해석하지 못했습니다."),
+    AI_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AI003", "AI 요청이 많아 잠시 후 다시 시도해주세요.");
 
     private final HttpStatus status;
     private final String code;

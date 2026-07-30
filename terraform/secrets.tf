@@ -15,7 +15,7 @@ resource "aws_secretsmanager_secret_version" "app_secrets" {
     KAKAO_REST_API_KEY  = "CHANGE_ME"
     KAKAO_CLIENT_SECRET = "CHANGE_ME"
     TOSS_SECRET_KEY     = "CHANGE_ME"
-    AI_SERVER_API_KEY   = "CHANGE_ME"
+    OPENAI_API_KEY      = "CHANGE_ME"
     SENTRY_DSN          = "CHANGE_ME"
     SENTRY_AUTH_TOKEN   = "CHANGE_ME"
   })

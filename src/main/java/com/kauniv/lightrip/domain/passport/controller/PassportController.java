@@ -6,13 +6,18 @@ import com.kauniv.lightrip.domain.passport.dto.request.PassportVisibilityRequest
 import com.kauniv.lightrip.domain.passport.dto.response.PassportResponse;
 import com.kauniv.lightrip.domain.passport.dto.response.PassportStatsResponse;
 import com.kauniv.lightrip.domain.passport.service.PassportService;
+import com.kauniv.lightrip.global.ai.dto.AiDraftRequest;
+import com.kauniv.lightrip.global.ai.dto.AiDraftResponse;
+import com.kauniv.lightrip.global.ai.service.AiService;
 import com.kauniv.lightrip.global.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
@@ -32,6 +37,82 @@ import java.math.BigDecimal;
 public class PassportController {
 
     private final PassportService passportService;
+    private final AiService aiService;
+    // > AI 초안 생성 담당. 초안 경로가 /api/v1/passports 하위라 이 컨트롤러에서 함께 노출한다.
+
+    @Operation(summary = "AI 여권 초안 생성",
+            description = """
+                    방문 정보로 여권 본문 초안을 생성합니다. 한국어 2~4문장, 담백한 여행 기록 톤.
+
+                    ### ✅ 필수 항목
+                    | 필드 | 설명 |
+                    |---|---|
+                    | `spaceName` | 장소명 (최대 50자) |
+                    | `category` | 카테고리 enum (CAFE/RESTAURANT/BAR/CULTURE/ACTIVITY/SHOPPING/NATURE/ETC) |
+                    | `districtCategory` | 권역 enum (예: MAPO, GANGNAM, SEONGNAM_BUNDANG) |
+                    | `visitedAt` | 방문 날짜 (`YYYY-MM-DD`, 오늘 또는 과거만 허용) |
+
+                    ### ⚙️ 선택 항목
+                    | 필드 | 동작 |
+                    |---|---|
+                    | `keywords` | 초안에 반영할 키워드. 최대 5개, 각 20자 이내. 생략 가능 |
+
+                    ### 🚨 자주 걸리는 에러
+                    | 코드 | 상황 |
+                    |---|---|
+                    | 400 `C001` | enum 오타 / `visitedAt`이 미래 / 장소명 누락 |
+                    | 401 `A001` | Authorization 헤더 누락 |
+                    | 429 `AI003` | AI 요청량 초과 — 잠시 후 재시도 |
+                    | 502 `AI001` | AI 호출 실패 (재시도 1회 후에도 실패) |
+                    | 502 `AI002` | AI 응답 해석 실패 |
+
+                    ### 🔁 동작 흐름
+                    1. 본인의 과거 기록 중 유사한 글을 찾아 어투 참고자료로 사용 (없으면 생략)
+                    2. 초안 생성 후 `draft` 반환. `category`는 요청값을 그대로 되돌려줌
+                    3. 받은 값을 여권 등록 API의 `draft` / `aiCategory`에 담아 보내면 원본이 보존됨
+
+                    > ⚠️ 카테고리 자동 분류는 지원하지 않습니다. `category`는 요청값 그대로입니다.
+                    """)
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200", description = "초안 생성 성공",
+                    content = @Content(examples = @ExampleObject(value = """
+                            {
+                              "success": true,
+                              "code": "SUCCESS",
+                              "message": "초안이 생성되었습니다.",
+                              "data": {
+                                "draft": "마포구 안녕커피에서 오후를 보냈다. 창가 자리에 앉아 드립커피를 천천히 마셨다. 오랜만에 여유로운 시간이었다.",
+                                "category": "CAFE"
+                              }
+                            }
+                            """))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "429", description = "AI 요청량 초과",
+                    content = @Content(examples = @ExampleObject(value = """
+                            {
+                              "success": false,
+                              "code": "AI003",
+                              "message": "AI 요청이 많아 잠시 후 다시 시도해주세요."
+                            }
+                            """))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "502", description = "AI 호출 또는 응답 해석 실패",
+                    content = @Content(examples = @ExampleObject(value = """
+                            {
+                              "success": false,
+                              "code": "AI001",
+                              "message": "AI 초안 생성에 실패했습니다."
+                            }
+                            """)))
+    })
+    @PostMapping("/draft")
+    public ApiResponse<AiDraftResponse> generateDraft(
+            @AuthenticationPrincipal Long userId,
+            @Valid @RequestBody AiDraftRequest request
+    ) {
+        return ApiResponse.success("초안이 생성되었습니다.", aiService.generateDraft(userId, request));
+    }
 
     @Operation(summary = "여권 등록",
             description = """
@@ -68,7 +149,7 @@ public class PassportController {
                     | 409 `P003` | 같은 `(userId, latitude, longitude, visitedAt)` 조합 중복 |
 
                     ### 🔁 동작 흐름
-                    1. (선택) AI 초안: `POST /api/v1/ai/draft?imageUrl=...` → `draft`, `aiCategory` 받기
+                    1. (선택) AI 초안: `POST /api/v1/passports/draft` → `draft`, `aiCategory` 받기
                     2. 이미지 업로드: `POST /api/v1/images/presigned-url` → presigned URL로 S3 PUT → 받은 CloudFront URL을 `imageUrls`에 담음
                     3. 본 API 호출: 위 정보를 모아서 등록
                     4. 등록된 여권의 지역이 **첫 등록**이면 `DistrictCover`도 자동 생성 (첫 이미지가 커버로)
@@ -76,11 +157,9 @@ public class PassportController {
     @PostMapping
     public ApiResponse<PassportResponse> create(
             @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody PassportCreateRequest request,
-            @Parameter(hidden = true) @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
-            // > FastAPI /get-embedding 호출 시 JWT 검증에 사용. Swagger UI에는 노출하지 않음.
+            @Valid @RequestBody PassportCreateRequest request
     ) {
-        return ApiResponse.success("여권이 등록되었습니다.", passportService.create(userId, request, authorization));
+        return ApiResponse.success("여권이 등록되었습니다.", passportService.create(userId, request));
     }
 
     @Operation(summary = "여권 수정",
