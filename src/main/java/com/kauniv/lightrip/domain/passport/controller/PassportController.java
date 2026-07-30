@@ -56,11 +56,13 @@ public class PassportController {
                     | 필드 | 동작 |
                     |---|---|
                     | `keywords` | 초안에 반영할 키워드. 최대 5개, 각 20자 이내. 생략 가능 |
+                    | `imageUrl` | 방문 사진 URL. 넣으면 사진 내용까지 반영. **공개 접근 가능한 https URL만** |
 
                     ### 🚨 자주 걸리는 에러
                     | 코드 | 상황 |
                     |---|---|
-                    | 400 `C001` | enum 오타 / `visitedAt`이 미래 / 장소명 누락 |
+                    | 400 `C001` | enum 오타 / `visitedAt`이 미래 / 장소명 누락 / `imageUrl`이 https 아님 |
+                    | 400 `AI004` | 사진을 못 불러옴 — 죽은 링크이거나 비공개 URL |
                     | 401 `A001` | Authorization 헤더 누락 |
                     | 429 `AI003` | AI 요청량 초과 — 잠시 후 재시도 |
                     | 502 `AI001` | AI 호출 실패 (재시도 1회 후에도 실패) |
@@ -68,8 +70,12 @@ public class PassportController {
 
                     ### 🔁 동작 흐름
                     1. 본인의 과거 기록 중 유사한 글을 찾아 어투 참고자료로 사용 (없으면 생략)
-                    2. 초안 생성 후 `draft` 반환. `category`는 요청값을 그대로 되돌려줌
-                    3. 받은 값을 여권 등록 API의 `draft` / `aiCategory`에 담아 보내면 원본이 보존됨
+                    2. `imageUrl`이 있으면 사진을 함께 넘겨 초안 생성 (없으면 텍스트만)
+                    3. 초안 생성 후 `draft` 반환. `category`는 요청값을 그대로 되돌려줌
+                    4. 받은 값을 여권 등록 API의 `draft` / `aiCategory`에 담아 보내면 원본이 보존됨
+
+                    > ⚠️ 사진은 OpenAI 서버가 직접 받아갑니다. S3 presigned URL(만료됨)이 아니라
+                    > 업로드 완료 후의 CloudFront URL을 넣어야 합니다.
 
                     > ⚠️ 카테고리 자동 분류는 지원하지 않습니다. `category`는 요청값 그대로입니다.
                     """)

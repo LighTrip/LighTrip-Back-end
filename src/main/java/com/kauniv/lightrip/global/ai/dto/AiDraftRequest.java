@@ -6,6 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
@@ -55,5 +56,16 @@ public record AiDraftRequest(
                 example = "[\"창가 자리\",\"드립커피\"]"
         )
         @Size(max = 5, message = "키워드는 5개 이하여야 합니다.")
-        List<@NotBlank(message = "키워드는 비어있을 수 없습니다.") @Size(max = 20) String> keywords
+        List<@NotBlank(message = "키워드는 비어있을 수 없습니다.") @Size(max = 20) String> keywords,
+
+        @Schema(
+                description = "[선택] 방문 사진 URL. 넣으면 사진에 보이는 것까지 반영해서 초안을 만든다. "
+                        + "**OpenAI 서버가 직접 받아가므로 공개 접근 가능한 https URL이어야 한다** "
+                        + "(presigned URL 말고 CloudFront URL). 생략 또는 null 허용.",
+                nullable = true,
+                example = "https://cdn.lightrip.cloud/passports/sample.jpg"
+        )
+        @Size(max = 500, message = "이미지 URL은 500자 이하여야 합니다.")
+        @Pattern(regexp = "^https://.*", message = "이미지 URL은 https로 시작해야 합니다.")
+        String imageUrl
 ) {}

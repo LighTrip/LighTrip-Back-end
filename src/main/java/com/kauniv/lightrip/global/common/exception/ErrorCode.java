@@ -76,7 +76,8 @@ public enum ErrorCode {
     // ===== AI =====
     AI_CALL_FAILED(HttpStatus.BAD_GATEWAY, "AI001", "AI 초안 생성에 실패했습니다."),
     AI_RESPONSE_PARSE_FAILED(HttpStatus.BAD_GATEWAY, "AI002", "AI 응답을 해석하지 못했습니다."),
-    AI_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AI003", "AI 요청이 많아 잠시 후 다시 시도해주세요.");
+    AI_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AI003", "AI 요청이 많아 잠시 후 다시 시도해주세요."),
+    AI_IMAGE_INVALID(HttpStatus.BAD_REQUEST, "AI004", "사진을 불러올 수 없습니다. 공개된 이미지 URL인지 확인해주세요.");
 
     private final HttpStatus status;
     private final String code;

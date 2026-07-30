@@ -42,10 +42,12 @@ public class OpenAiClient {
     /**
      * Chat Completions 호출. 모델이 반환한 본문(JSON 문자열)을 그대로 돌려준다.
      * 실패 시 BusinessException — 초안 생성은 사용자에게 결과를 보장해야 하므로 조용히 넘기지 않는다.
+     *
+     * @param imageUrl 함께 볼 사진 URL. null이면 텍스트만으로 생성한다.
      */
-    public String chat(String systemPrompt, String userPrompt) {
+    public String chat(String systemPrompt, String userPrompt, String imageUrl) {
         ChatCompletionRequest request = ChatCompletionRequest.jsonMode(
-                openAiProperties.model(), systemPrompt, userPrompt, DRAFT_TEMPERATURE);
+                openAiProperties.model(), systemPrompt, userPrompt, imageUrl, DRAFT_TEMPERATURE);
 
         ChatCompletionResponse response = callWithRetry(
                 () -> openAiRestClient.post()
@@ -105,6 +107,10 @@ public class OpenAiClient {
             log.error("OpenAI {} 인증 실패(401) — OPENAI_API_KEY 환경변수를 확인하세요.", path);
             throw new BusinessException(ErrorCode.AI_CALL_FAILED);
         } catch (HttpClientErrorException e) {
+            if (isInvalidImageUrl(e)) {
+                log.warn("OpenAI {} 이미지 URL 처리 실패 — 공개 접근 가능한 URL인지 확인 필요", path);
+                throw new BusinessException(ErrorCode.AI_IMAGE_INVALID);
+            }
             log.error("OpenAI {} 요청 실패: {}", path, describe(e));
             throw new BusinessException(ErrorCode.AI_CALL_FAILED);
         } catch (HttpServerErrorException | ResourceAccessException e) {
@@ -123,6 +129,13 @@ public class OpenAiClient {
             log.error("OpenAI {} 재시도 실패: {}", path, describe(e));
             throw new BusinessException(ErrorCode.AI_CALL_FAILED);
         }
+    }
+
+    // > OpenAI가 이미지 URL을 못 받아온 경우(죽은 링크, 비공개 버킷 등) error.code로 invalid_image_url을 준다.
+    // > 사용자가 고칠 수 있는 입력 문제라 502가 아니라 400으로 돌려주기 위해 구분한다.
+    // > 본문에는 요청 내용이 실릴 수 있어 포함 여부만 보고 로그에는 남기지 않는다.
+    private boolean isInvalidImageUrl(HttpClientErrorException e) {
+        return e.getResponseBodyAsString().contains("invalid_image_url");
     }
 
     // > 예외를 상태코드/타입 수준으로만 요약한다.

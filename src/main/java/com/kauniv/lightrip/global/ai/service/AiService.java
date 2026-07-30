@@ -47,8 +47,9 @@ public class AiService {
                 req.spaceName(), req.category(), req.districtCategory(),
                 req.visitedAt(), req.keywords(), references);
 
-        String content = openAiClient.chat(DraftPrompt.SYSTEM, userPrompt);
+        String content = openAiClient.chat(DraftPrompt.SYSTEM, userPrompt, req.imageUrl());
         // > 호출 실패 시 OpenAiClient가 BusinessException을 던진다.
+        // > imageUrl이 null이면 텍스트만으로 생성 — 사진은 선택 입력이다.
 
         return new AiDraftResponse(parseDraft(content), req.category());
         // > category는 요청값을 그대로 반환 — 카테고리 자동 분류는 지원하지 않는다.
