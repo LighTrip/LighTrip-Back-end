@@ -5,11 +5,11 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kauniv.lightrip.domain.passport.repository.PassportRepository;
 import com.kauniv.lightrip.global.ai.OpenAiClient;
-import com.kauniv.lightrip.global.ai.dto.AiDraftRequest;
 import com.kauniv.lightrip.global.ai.dto.AiDraftResponse;
 import com.kauniv.lightrip.global.ai.prompt.DraftPrompt;
 import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
+import com.kauniv.lightrip.global.enums.Category;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
@@ -17,7 +17,6 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -40,30 +39,32 @@ public class AiService {
     private static final int PARSE_FAIL_LOG_LIMIT = 200;
 
     // ========== 초안 생성 ==========
-    public AiDraftResponse generateDraft(Long userId, AiDraftRequest req) {
-        String references = findReferences(userId, req);
-        // > 과거 기록 기반 RAG. 실패하거나 기록이 없으면 null → 참고자료 없이 생성.
 
-        String userPrompt = DraftPrompt.user(
-                req.spaceName(), req.category(), req.districtCategory(),
-                req.visitedAt(), req.keywords(), references);
+    /**
+     * 사진(+메모)으로 기록 초안과 카테고리를 생성한다.
+     *
+     * @param imageUrl 방문 사진 URL. OpenAI 서버가 직접 받아가므로 공개 접근 가능해야 한다.
+     * @param text     사용자가 입력한 메모. 있으면 과거 기록 RAG 경로를 탄다.
+     * @param userId   본인 기록만 검색하기 위한 식별자.
+     */
+    public AiDraftResponse generateDraft(String imageUrl, String text, Long userId) {
+        String references = findReferences(text, userId);
+        // > 과거 기록 기반 RAG. 메모가 없거나 조회에 실패하면 null → 참고자료 없이 생성.
 
-        String content = openAiClient.chat(DraftPrompt.SYSTEM, userPrompt, req.imageUrl());
+        String content = openAiClient.chat(DraftPrompt.SYSTEM, DraftPrompt.user(text, references), imageUrl);
         // > 호출 실패 시 OpenAiClient가 BusinessException을 던진다.
-        // > imageUrl이 null이면 텍스트만으로 생성 — 사진은 선택 입력이다.
 
-        return new AiDraftResponse(parseDraft(content), req.category());
-        // > category는 요청값을 그대로 반환 — 카테고리 자동 분류는 지원하지 않는다.
+        return parseDraft(content);
     }
 
-    // > 요청 정보를 질의문으로 만들어 임베딩 → 본인의 유사 과거 기록을 참고자료로 뽑는다.
-    // > 임베딩 실패는 초안 생성 자체를 막지 않는다 (참고자료 없이 진행).
-    private String findReferences(Long userId, AiDraftRequest req) {
-        if (userId == null) {
+    // > 메모를 임베딩해서 본인의 유사 과거 기록을 참고자료로 뽑는다.
+    // > 메모가 없으면 검색할 질의문이 없으므로 RAG 자체를 건너뛴다 (구 API와 동일한 조건).
+    private String findReferences(String text, Long userId) {
+        if (userId == null || text == null || text.isBlank()) {
             return null;
         }
 
-        float[] embedding = openAiClient.embed(toQueryText(req));
+        float[] embedding = openAiClient.embed(text);
         if (embedding == null) {
             return null;
         }
@@ -83,21 +84,9 @@ public class AiService {
         }
     }
 
-    // > 임베딩 검색용 질의문. 초안 본문이 아직 없으므로 입력 정보를 이어붙여 대신 사용한다.
-    private String toQueryText(AiDraftRequest req) {
-        List<String> parts = new ArrayList<>();
-        parts.add(req.spaceName());
-        parts.add(req.category().getDisplayName());
-        parts.add(req.districtCategory().getDisplayName());
-        if (req.keywords() != null && !req.keywords().isEmpty()) {
-            parts.addAll(req.keywords());
-        }
-        return String.join(" ", parts);
-    }
-
-    // > 모델 응답 {"draft": "..."}에서 본문 추출.
+    // > 모델 응답 {"draft": "...", "category": "CAFE"} 파싱.
     // > readTree: 모델이 필드를 더 붙여도 깨지지 않게 바인딩 대신 트리로 읽는다.
-    private String parseDraft(String content) {
+    private AiDraftResponse parseDraft(String content) {
         try {
             JsonNode node = objectMapper.readTree(content);
             String draft = node.path("draft").asText(null);
@@ -106,11 +95,30 @@ public class AiService {
                 log.error("AI 응답에 draft 필드가 없습니다: {}", truncate(content));
                 throw new BusinessException(ErrorCode.AI_RESPONSE_PARSE_FAILED);
             }
-            return draft.trim();
+            return new AiDraftResponse(draft.trim(), parseCategory(node.path("category").asText(null)));
         } catch (JsonProcessingException e) {
             log.error("AI 응답 JSON 파싱 실패: {}", truncate(content));
             throw new BusinessException(ErrorCode.AI_RESPONSE_PARSE_FAILED);
         }
+    }
+
+    private Category parseCategory(String categoryStr) {
+        // > AI 반환값을 Category enum으로 안전하게 변환.
+        // > 영문 enum 이름(예: "CAFE")을 요구하지만 한글 라벨("카페")로 답할 수도 있어 둘 다 허용.
+        // > 매핑 실패 시 ETC로 폴백 — 카테고리 하나 때문에 초안 전체를 버리지 않는다.
+        if (categoryStr == null) {
+            return Category.ETC;
+        }
+
+        String value = categoryStr.trim();
+        for (Category category : Category.values()) {
+            if (category.getDisplayName().equals(value) || category.name().equalsIgnoreCase(value)) {
+                return category;
+            }
+        }
+
+        log.warn("AI 카테고리 매핑 실패: {} → ETC로 폴백", categoryStr);
+        return Category.ETC;
     }
 
     private String truncate(String value) {
