@@ -8,7 +8,7 @@ public record AiDraftResponse(
 
         @Schema(
                 description = "AI가 생성한 기록 초안. 프론트에서 content 입력창에 미리 채워줄 값.",
-                example = "안녕커피에서 오후를 보냈다. 창가 자리에 앉아 드립커피를 천천히 마셨다."
+                example = "오늘은 안녕커피에 갔다. 창가 자리에 앉아서 드립커피를 천천히 마셨다."
         )
         String draft,
 

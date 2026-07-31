@@ -26,7 +26,7 @@ public class AiController {
     @Operation(summary = "AI 초안 생성",
             description = """
                     사진(+메모)으로 여권 본문 초안과 카테고리 초기값을 생성합니다.
-                    한국어 2~4문장, 담백한 여행 기록 톤.
+                    한국어 2~4문장, 일기 쓰듯 편한 반말 톤.
 
                     ### ✅ 파라미터
                     | 이름 | 필수 | 설명 |
@@ -59,7 +59,7 @@ public class AiController {
                     responseCode = "200", description = "초안 생성 성공",
                     content = @Content(examples = @ExampleObject(value = """
                             {
-                              "draft": "안녕커피에서 오후를 보냈다. 창가 자리에 앉아 드립커피를 천천히 마셨다. 오랜만에 여유로운 시간이었다.",
+                              "draft": "오늘은 안녕커피에 갔다. 창가 자리에 앉아서 드립커피를 천천히 마셨는데 오랜만에 여유로웠다.",
                               "category": "CAFE"
                             }
                             """))),
