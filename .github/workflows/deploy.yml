@@ -58,6 +58,7 @@ jobs:
               --name lightrip-prod \
               --restart always \
               -p 8080:8080 \
+              --network lightrip-net \
               --env-file /home/ec2-user/.env \
               $ECR_REGISTRY/lightrip-server:main
         env:
@@ -84,6 +85,7 @@ jobs:
               --name lightrip-dev \
               --restart always \
               -p 8081:8080 \
+              --network lightrip-net \
               --env-file /home/ec2-user/.env.dev \
               $ECR_REGISTRY/lightrip-server:develop
         env:

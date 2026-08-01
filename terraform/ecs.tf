@@ -62,7 +62,7 @@ resource "aws_ecs_task_definition" "api" {
       { name = "KAKAO_REST_API_KEY", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:KAKAO_REST_API_KEY::" },
       { name = "KAKAO_CLIENT_SECRET", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:KAKAO_CLIENT_SECRET::" },
       { name = "TOSS_SECRET_KEY", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:TOSS_SECRET_KEY::" },
-      { name = "AI_SERVER_API_KEY", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:AI_SERVER_API_KEY::" },
+      { name = "OPENAI_API_KEY", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:OPENAI_API_KEY::" },
       { name = "SENTRY_DSN", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:SENTRY_DSN::" },
       { name = "SENTRY_AUTH_TOKEN", valueFrom = "${aws_secretsmanager_secret.app_secrets.arn}:SENTRY_AUTH_TOKEN::" },
     ]
