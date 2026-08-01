@@ -12,7 +12,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpHeaders;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
@@ -68,7 +67,7 @@ public class PassportController {
                     | 409 `P003` | 같은 `(userId, latitude, longitude, visitedAt)` 조합 중복 |
 
                     ### 🔁 동작 흐름
-                    1. (선택) AI 초안: `POST /api/v1/ai/draft?imageUrl=...` → `draft`, `aiCategory` 받기
+                    1. (선택) AI 초안: `POST /api/v1/ai/draft?imageUrl=...&text=...` → `draft`, `aiCategory` 받기
                     2. 이미지 업로드: `POST /api/v1/images/presigned-url` → presigned URL로 S3 PUT → 받은 CloudFront URL을 `imageUrls`에 담음
                     3. 본 API 호출: 위 정보를 모아서 등록
                     4. 등록된 여권의 지역이 **첫 등록**이면 `DistrictCover`도 자동 생성 (첫 이미지가 커버로)
@@ -76,11 +75,9 @@ public class PassportController {
     @PostMapping
     public ApiResponse<PassportResponse> create(
             @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody PassportCreateRequest request,
-            @Parameter(hidden = true) @RequestHeader(HttpHeaders.AUTHORIZATION) String authorization
-            // > FastAPI /get-embedding 호출 시 JWT 검증에 사용. Swagger UI에는 노출하지 않음.
+            @Valid @RequestBody PassportCreateRequest request
     ) {
-        return ApiResponse.success("여권이 등록되었습니다.", passportService.create(userId, request, authorization));
+        return ApiResponse.success("여권이 등록되었습니다.", passportService.create(userId, request));
     }
 
     @Operation(summary = "여권 수정",
