@@ -22,6 +22,11 @@ public interface TeamMemberRepository extends JpaRepository<TeamMember, Long> {
     // 유저가 속한 팀 조회 (유저당 팀 1개)
     Optional<TeamMember> findByUser_Id(Long userId);
 
+    boolean existsByUser_Id(Long userId);
+
+    // 탈퇴 시 소속된 모든 팀 정리용 (유저당 팀 1개가 정상이지만, 과거 데이터 정합성 깨짐에 대비해 List로 조회)
+    List<TeamMember> findAllByUser_Id(Long userId);
+
     @Modifying
     @Query("DELETE FROM TeamMember tm WHERE tm.team.id = :teamId")
     void deleteAllByTeam_Id(@Param("teamId") Long teamId);

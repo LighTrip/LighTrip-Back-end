@@ -1,5 +1,6 @@
 package com.kauniv.lightrip.global.auth.service;
 
+import com.kauniv.lightrip.domain.team.service.TeamService;
 import com.kauniv.lightrip.domain.user.repository.UserRepository;
 import com.kauniv.lightrip.global.auth.dto.TokenResponse;
 import com.kauniv.lightrip.global.auth.entity.Auth;
@@ -26,6 +27,7 @@ public class AuthService {
     private final RedisService redisService;
     private final AuthRepository authRepository;
     private final AppleTokenClient appleTokenClient;
+    private final TeamService teamService;
 
     // > refreshToken을 회전시키므로 새 refreshToken도 함께 반환해야 한다.
     // > 반환하지 않으면 클라이언트가 이전 토큰을 계속 들고 있어 다음 재발급이 REFRESH_TOKEN_MISMATCH로 실패한다.
@@ -60,6 +62,7 @@ public class AuthService {
 
     public void withdraw(Long userId, String accessToken) {
         revokeAppleIfLinked(userId); // CASCADE로 Auth가 같이 삭제되기 전에 revoke용 refreshToken을 먼저 사용
+        teamService.leaveAllTeams(userId); // CASCADE는 team_member 행만 지우므로, 리더면 팀 해산까지 먼저 처리
         userRepository.deleteById(userId); // DB CASCADE가 auth 포함 연관 데이터 전부 삭제
         long expiration = jwtProvider.getExpiration(accessToken);
         if (expiration > 0) {
