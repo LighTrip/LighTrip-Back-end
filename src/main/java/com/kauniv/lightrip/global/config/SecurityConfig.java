@@ -35,7 +35,7 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/", "/oauth2/**", "/login/**", "/auth/refresh",
+                                "/", "/oauth2/**", "/login/**", "/auth/refresh", "/auth/apple/login",
                                 "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**",
                                 "/actuator/**", "/ws/**",
                                 "/dev/**"   // dev 프로파일 전용 — @Profile("dev") 로 prod에서는 Bean 비활성화
