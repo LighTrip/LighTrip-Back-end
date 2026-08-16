@@ -45,6 +45,10 @@ public class TeamService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
+        if (teamMemberRepository.existsByUser_Id(userId)) {
+            throw new BusinessException(ErrorCode.TEAM_ALREADY_JOINED);
+        }
+
         String teamCode = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
 
         Team team = Team.builder()
@@ -77,7 +81,7 @@ public class TeamService {
         Team team = teamRepository.findByTeamCode(req.teamCode())
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_INVALID_CODE));
 
-        if (teamMemberRepository.existsByTeam_IdAndUser_Id(team.getId(), userId)) {
+        if (teamMemberRepository.existsByUser_Id(userId)) {
             throw new BusinessException(ErrorCode.TEAM_ALREADY_JOINED);
         }
 
@@ -120,16 +124,36 @@ public class TeamService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.TEAM_NOT_MEMBER));
 
         if (member.getRole() == TeamMember.Role.LEADER) {
-            // > LEADER 탈퇴 = 팀 해산.
-            // > 팀 여권 먼저 삭제 (passport.team_id FK 제약 해제 + 팀 여권 제거).
-            // > district_cover 팀 커버는 team.team_id ON DELETE CASCADE (V15)로 연쇄 삭제.
-            passportRepository.deleteAllByTeamId(teamId);
-            teamMemberRepository.deleteAllByTeam_Id(teamId);
-            teamRepository.delete(member.getTeam());
+            disbandTeam(member);
             return;
         }
 
         teamMemberRepository.delete(member);
+    }
+
+    // > 회원 탈퇴 시 호출. AuthService.withdraw()가 유저 삭제 전에 호출해
+    // > 리더가 탈퇴하면 팀을 해산하고, 팀원이면 팀에서만 제거한다.
+    // > DB CASCADE(V14)는 team_member 행만 지우고 team 자체는 정리하지 않으므로 반드시 필요.
+    @Transactional
+    public void leaveAllTeams(Long userId) {
+        List<TeamMember> memberships = teamMemberRepository.findAllByUser_Id(userId);
+        for (TeamMember member : memberships) {
+            if (member.getRole() == TeamMember.Role.LEADER) {
+                disbandTeam(member);
+            } else {
+                teamMemberRepository.delete(member);
+            }
+        }
+    }
+
+    // > LEADER 탈퇴 = 팀 해산.
+    // > 팀 여권 먼저 삭제 (passport.team_id FK 제약 해제 + 팀 여권 제거).
+    // > district_cover 팀 커버는 team.team_id ON DELETE CASCADE (V15)로 연쇄 삭제.
+    private void disbandTeam(TeamMember leaderMembership) {
+        Long teamId = leaderMembership.getTeam().getId();
+        passportRepository.deleteAllByTeamId(teamId);
+        teamMemberRepository.deleteAllByTeam_Id(teamId);
+        teamRepository.delete(leaderMembership.getTeam());
     }
 
     // > Redis에서 현재 온라인 팀원 위치 조회.
