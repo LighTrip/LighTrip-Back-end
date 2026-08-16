@@ -1,11 +1,15 @@
 package com.kauniv.lightrip.global.auth.controller;
 
+import com.kauniv.lightrip.global.auth.dto.AppleLoginRequest;
+import com.kauniv.lightrip.global.auth.dto.LoginResponse;
 import com.kauniv.lightrip.global.auth.dto.TokenResponse;
+import com.kauniv.lightrip.global.auth.service.AppleAuthService;
 import com.kauniv.lightrip.global.auth.service.AuthService;
 import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,6 +22,13 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final AppleAuthService appleAuthService;
+
+    @Operation(summary = "Apple 로그인", description = "iOS 네이티브 Sign in with Apple로 받은 identityToken을 검증하고 자체 JWT를 발급합니다.")
+    @PostMapping("/apple/login")
+    public ResponseEntity<LoginResponse> appleLogin(@Valid @RequestBody AppleLoginRequest request) {
+        return ResponseEntity.ok(appleAuthService.login(request));
+    }
 
     @Operation(summary = "액세스 토큰 재발급", description = "리프레시 토큰으로 새 액세스 토큰을 발급받습니다.")
     @PostMapping("/refresh")
