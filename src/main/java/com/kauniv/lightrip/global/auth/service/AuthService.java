@@ -1,6 +1,7 @@
 package com.kauniv.lightrip.global.auth.service;
 
 import com.kauniv.lightrip.domain.user.repository.UserRepository;
+import com.kauniv.lightrip.global.auth.dto.TokenResponse;
 import com.kauniv.lightrip.global.common.exception.BusinessException;
 import com.kauniv.lightrip.global.common.exception.ErrorCode;
 import com.kauniv.lightrip.global.jwt.JwtProvider;
@@ -18,7 +19,9 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RedisService redisService;
 
-    public String reissueAccessToken(String refreshToken) {
+    // > refreshToken을 회전시키므로 새 refreshToken도 함께 반환해야 한다.
+    // > 반환하지 않으면 클라이언트가 이전 토큰을 계속 들고 있어 다음 재발급이 REFRESH_TOKEN_MISMATCH로 실패한다.
+    public TokenResponse reissueAccessToken(String refreshToken) {
         if (!jwtProvider.validateToken(refreshToken)) {
             throw new BusinessException(ErrorCode.INVALID_TOKEN);
         }
@@ -33,7 +36,10 @@ public class AuthService {
         String newRefreshToken = jwtProvider.generateRefreshToken(userId);
         redisService.saveRefreshToken(userId, newRefreshToken, jwtProvider.getRefreshTokenExpiration());
 
-        return newAccessToken;
+        return TokenResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(newRefreshToken)
+                .build();
     }
 
     public void logout(Long userId, String accessToken) {

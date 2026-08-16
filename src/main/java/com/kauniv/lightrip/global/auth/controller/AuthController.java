@@ -23,12 +23,7 @@ public class AuthController {
     @PostMapping("/refresh")
     public ResponseEntity<TokenResponse> refresh(
             @RequestHeader("Refresh-Token") String refreshToken) {
-        String newAccessToken = authService.reissueAccessToken(refreshToken);
-        return ResponseEntity.ok(
-                TokenResponse.builder()
-                        .accessToken(newAccessToken)
-                        .build()
-        );
+        return ResponseEntity.ok(authService.reissueAccessToken(refreshToken));
     }
 
     @Operation(summary = "로그아웃", description = "액세스 토큰을 블랙리스트에 등록하고 리프레시 토큰을 삭제합니다.")
