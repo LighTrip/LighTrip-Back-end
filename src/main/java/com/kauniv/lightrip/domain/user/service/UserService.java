@@ -43,10 +43,17 @@ public class UserService {
     }
 
     private Auth createUser(OAuth2UserInfo oAuth2UserInfo, SocialType socialType) {
+        // > 카카오/Apple 등 다른 소셜로 이미 가입된 이메일이면 별개 계정으로 새로 만들지 않고 막음.
+        // > 카카오·Apple 공통 진입점이라 여기 한 곳만 고치면 양방향(카카오→Apple, Apple→카카오) 다 방지됨.
+        String email = oAuth2UserInfo.getEmail();
+        if (email != null && userRepository.findByEmail(email).isPresent()) {
+            throw new BusinessException(ErrorCode.DUPLICATE_SOCIAL_EMAIL);
+        }
+
         User user = userRepository.save(
                 User.builder()
                         .nickname(oAuth2UserInfo.getNickname())
-                        .email(oAuth2UserInfo.getEmail())
+                        .email(email)
                         .build()
         );
 

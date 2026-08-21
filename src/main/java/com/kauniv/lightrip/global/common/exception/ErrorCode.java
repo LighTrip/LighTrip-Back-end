@@ -19,6 +19,7 @@ public enum ErrorCode {
     INVALID_TOKEN(HttpStatus.UNAUTHORIZED, "A002", "유효하지 않은 토큰입니다."),
     EXPIRED_TOKEN(HttpStatus.UNAUTHORIZED, "A003", "만료된 토큰입니다."),
     REFRESH_TOKEN_MISMATCH(HttpStatus.UNAUTHORIZED, "A004", "리프레시 토큰이 일치하지 않습니다."),
+    DUPLICATE_SOCIAL_EMAIL(HttpStatus.CONFLICT, "A005", "이미 다른 방법으로 가입된 이메일입니다."),
 
     // ===== User =====
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "U001", "존재하지 않는 사용자입니다."),
