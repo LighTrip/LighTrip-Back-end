@@ -4,6 +4,7 @@ import com.kauniv.lightrip.domain.team.entity.Team;
 import com.kauniv.lightrip.domain.user.entity.User;
 import com.kauniv.lightrip.global.enums.Category;
 import com.kauniv.lightrip.global.enums.District;
+import com.kauniv.lightrip.global.enums.PassportStatus;
 import com.kauniv.lightrip.global.enums.Visibility;
 import jakarta.persistence.*;
 import lombok.*;
@@ -117,6 +118,16 @@ public class Passport {
     @Builder.Default
     private Long scrapCount = 0L;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status", nullable = false, columnDefinition = "varchar(20) default 'ACTIVE'")
+    @Builder.Default
+    private PassportStatus status = PassportStatus.ACTIVE;
+    // > 신고 누적 자동 숨김 상태. 신규 여권은 항상 ACTIVE.
+    // > columnDefinition에 default 지정 — 로컬 ddl-auto=update가 기존 행 있는 테이블에
+    // >   NOT NULL 컬럼을 추가할 때 백필되도록. prod는 Flyway V17이 동일하게 처리.
+    // > visibility(작성자 의도)와 별개 축 — status는 운영/신고에 의한 시스템 상태.
+    // > HIDDEN이면 피드·상세·타인 지도 등 공개 경로에서 제외. 작성자 본인 목록(/passports/me)에서는 계속 노출.
+
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -167,4 +178,8 @@ public class Passport {
     public void decreaseLikeCount() { if (this.likeCount > 0) this.likeCount--; }
     public void increaseScrapCount() { this.scrapCount++; }
     public void decreaseScrapCount() { if (this.scrapCount > 0) this.scrapCount--; }
+
+    // > 신고 누적 임계값 도달 시 ReportService가 호출. 공개 경로 조회에서 제외됨.
+    public void hide() { this.status = PassportStatus.HIDDEN; }
+    public boolean isActive() { return this.status == PassportStatus.ACTIVE; }
 }

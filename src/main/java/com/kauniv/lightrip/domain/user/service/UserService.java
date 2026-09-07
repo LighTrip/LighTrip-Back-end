@@ -1,5 +1,6 @@
 package com.kauniv.lightrip.domain.user.service;
 
+import com.kauniv.lightrip.domain.block.repository.UserBlockRepository;
 import com.kauniv.lightrip.domain.friend.repository.FriendRepository;
 import com.kauniv.lightrip.domain.like.repository.LikeRepository;
 import com.kauniv.lightrip.domain.passport.repository.PassportRepository;
@@ -31,6 +32,8 @@ public class UserService {
     private final FriendRepository friendRepository;
     private final LikeRepository likeRepository;
     private final ScrapRepository scrapRepository;
+    private final UserBlockRepository userBlockRepository;
+    // > 공개 프로필 조회에서 차단 관계(양방향)를 숨기기 위해 주입.
 
     public boolean existsBySocialInfo(String socialId, SocialType socialType) {
         return authRepository.findBySocialIdAndSocialType(socialId, socialType).isPresent();
@@ -130,9 +133,16 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public PublicProfileResponse getPublicProfile(Long userId) {
-        User user = userRepository.findById(userId)
+    public PublicProfileResponse getPublicProfile(Long viewerId, Long targetUserId) {
+        User user = userRepository.findById(targetUserId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        // > 차단 관계(양방향)면 존재하지 않는 것으로 취급.
+        if (!targetUserId.equals(viewerId)
+                && userBlockRepository.existsBlockBetween(viewerId, targetUserId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
+
         return PublicProfileResponse.from(user);
     }
 }

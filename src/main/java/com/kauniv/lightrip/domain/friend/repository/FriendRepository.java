@@ -2,11 +2,21 @@ package com.kauniv.lightrip.domain.friend.repository;
 
 import com.kauniv.lightrip.domain.friend.entity.Friend;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface FriendRepository extends JpaRepository<Friend, Long> {
+
+    // > 차단 시 두 사용자 간 친구 관계 / 대기 중 요청을 방향 무관하게 일괄 삭제 (BlockService).
+    @Modifying(clearAutomatically = true)
+    @Query("""
+            DELETE FROM Friend f
+             WHERE (f.requester.id = :userA AND f.receiver.id = :userB)
+                OR (f.requester.id = :userB AND f.receiver.id = :userA)
+            """)
+    void deleteFriendship(@Param("userA") Long userA, @Param("userB") Long userB);
 
     @Query("""
             SELECT COUNT(f) > 0 FROM Friend f

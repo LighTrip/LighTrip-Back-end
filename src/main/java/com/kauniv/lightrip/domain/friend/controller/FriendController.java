@@ -85,12 +85,13 @@ public class FriendController {
         return ApiResponse.success(response);
     }
 
-    @Operation(summary = "친구 코드로 유저 검색", description = "친구 코드로 유저를 검색합니다. 친구 요청 전 상대방 확인용입니다.")
+    @Operation(summary = "친구 코드로 유저 검색", description = "친구 코드로 유저를 검색합니다. 친구 요청 전 상대방 확인용입니다. 차단 관계인 경우 조회되지 않습니다.")
     @GetMapping("/search")
     public ApiResponse<FriendResponse> searchByFriendCode(
+            @AuthenticationPrincipal Long userId,
             @Parameter(description = "검색할 친구 코드 (8자리 대문자)") @RequestParam String code) {
 
-        FriendResponse response = friendService.searchByFriendCode(code);
+        FriendResponse response = friendService.searchByFriendCode(userId, code);
         return ApiResponse.success(response);
     }
 
