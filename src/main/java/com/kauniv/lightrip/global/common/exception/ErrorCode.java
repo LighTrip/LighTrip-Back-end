@@ -78,7 +78,17 @@ public enum ErrorCode {
     AI_CALL_FAILED(HttpStatus.BAD_GATEWAY, "AI001", "AI 초안 생성에 실패했습니다."),
     AI_RESPONSE_PARSE_FAILED(HttpStatus.BAD_GATEWAY, "AI002", "AI 응답을 해석하지 못했습니다."),
     AI_RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "AI003", "AI 요청이 많아 잠시 후 다시 시도해주세요."),
-    AI_IMAGE_INVALID(HttpStatus.BAD_REQUEST, "AI004", "사진을 불러올 수 없습니다. 공개된 이미지 URL인지 확인해주세요.");
+    AI_IMAGE_INVALID(HttpStatus.BAD_REQUEST, "AI004", "사진을 불러올 수 없습니다. 공개된 이미지 URL인지 확인해주세요."),
+
+    // ===== Report (게시물 신고) =====
+    REPORT_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "RP001", "본인의 게시물은 신고할 수 없습니다."),
+    REPORT_DUPLICATE(HttpStatus.CONFLICT, "RP002", "이미 신고한 게시물입니다."),
+    REPORT_DETAIL_REQUIRED(HttpStatus.BAD_REQUEST, "RP003", "기타 사유는 상세 내용을 입력해야 합니다."),
+
+    // ===== Block (사용자 차단) =====
+    BLOCK_SELF_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "BL001", "자기 자신을 차단할 수 없습니다."),
+    BLOCK_NOT_FOUND(HttpStatus.NOT_FOUND, "BL002", "차단 기록이 존재하지 않습니다."),
+    BLOCKED_RELATION(HttpStatus.FORBIDDEN, "BL003", "차단한 사용자이거나 나를 차단한 사용자입니다.");
 
     private final HttpStatus status;
     private final String code;
