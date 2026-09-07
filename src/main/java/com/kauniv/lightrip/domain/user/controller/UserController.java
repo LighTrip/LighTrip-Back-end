@@ -44,10 +44,11 @@ public class UserController {
         return ApiResponse.success(userService.updateMyProfile(userId, request));
     }
 
-    @Operation(summary = "공개 프로필 조회", description = "다른 유저의 공개 프로필을 조회합니다.")
+    @Operation(summary = "공개 프로필 조회", description = "다른 유저의 공개 프로필을 조회합니다. 차단 관계인 경우 404를 반환합니다.")
     @GetMapping("/{userId}")
     public ApiResponse<PublicProfileResponse> getPublicProfile(
+            @AuthenticationPrincipal Long me,
             @PathVariable Long userId) {
-        return ApiResponse.success(userService.getPublicProfile(userId));
+        return ApiResponse.success(userService.getPublicProfile(me, userId));
     }
 }

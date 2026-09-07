@@ -5,6 +5,7 @@ import com.kauniv.lightrip.domain.friend.dto.request.FriendRequest;
 import com.kauniv.lightrip.domain.friend.dto.request.FriendStatusUpdate;
 import com.kauniv.lightrip.domain.friend.dto.response.FriendPassportResponse;
 import com.kauniv.lightrip.domain.friend.dto.response.FriendResponse;
+import com.kauniv.lightrip.domain.block.repository.UserBlockRepository;
 import com.kauniv.lightrip.domain.friend.entity.Friend;
 import com.kauniv.lightrip.domain.friend.repository.FriendRepository;
 import com.kauniv.lightrip.domain.passport.dto.response.DistrictResponse;
@@ -38,6 +39,8 @@ public class FriendService {
     private final PassportRepository passportRepository;
     private final DistrictCoverRepository districtCoverRepository;
     private final ScrapRepository scrapRepository;
+    private final UserBlockRepository userBlockRepository;
+    // > 친구 요청/검색/추천에서 차단 관계(양방향)를 배제하기 위해 주입.
 
     @Transactional
     public FriendResponse sendRequest(Long requesterId, FriendRequest dto) {
@@ -49,6 +52,11 @@ public class FriendService {
 
         if (requester.getId().equals(receiver.getId())) {
             throw new BusinessException(ErrorCode.FRIEND_SELF_REQUEST);
+        }
+
+        // > 차단 관계(양방향)면 친구 요청 불가.
+        if (userBlockRepository.existsBlockBetween(requester.getId(), receiver.getId())) {
+            throw new BusinessException(ErrorCode.BLOCKED_RELATION);
         }
 
         if (friendRepository.existsFriendship(requester.getId(), receiver.getId())) {
@@ -144,9 +152,15 @@ public class FriendService {
                 .toList();
     }
 
-    public FriendResponse searchByFriendCode(String friendCode) {
+    public FriendResponse searchByFriendCode(Long userId, String friendCode) {
         User user = userRepository.findByFriendCode(friendCode)
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+
+        // > 차단 관계면 존재하지 않는 것으로 취급 (검색 결과 노출 안 함).
+        if (!user.getId().equals(userId)
+                && userBlockRepository.existsBlockBetween(userId, user.getId())) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
 
         return FriendResponse.ofUser(user, null, null);
     }
@@ -211,8 +225,13 @@ public class FriendService {
                 .map(f -> f.getRequester().getId())
                 .collect(Collectors.toSet());
 
+        // > 차단 관계(양방향) 사용자는 추천에서 제외. 차단 목록은 소량이라 List.contains로 충분.
+        List<Long> blockedIds = userBlockRepository.findRelatedUserIds(userId);
+
         List<Long> filteredIds = candidateIds.stream()
-                .filter(id -> !existingFriendIds.contains(id) && !pendingIds.contains(id))
+                .filter(id -> !existingFriendIds.contains(id)
+                        && !pendingIds.contains(id)
+                        && !blockedIds.contains(id))
                 .collect(Collectors.toList());
 
         Collections.shuffle(filteredIds);
