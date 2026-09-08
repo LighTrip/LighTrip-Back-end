@@ -108,7 +108,8 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
                            ELSE (('x' || substr(md5(p.passport_id::text || CAST(:seed AS varchar)), 1, 8))::bit(32)::int % 5 + 5) % 5
                       END) AS eff_score
             FROM passport p
-            WHERE p.user_id <> :userId
+            WHERE p.user_id NOT IN (:excludeUserIds)
+              AND p.status = 'ACTIVE'
               AND p.visibility = 'PUBLIC'
               AND (CAST(:category AS varchar) IS NULL
                    OR p.category = CAST(:category AS varchar))
@@ -133,7 +134,7 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
     // > seed 미입력 시 jitter=0 → 순수 인기순. seed 동일하면 페이지 간 순서 고정.
     // > jitter 폭(현재 5)을 키우면 랜덤성이 강해짐.
     List<Object[]> findFeedPassportIds(
-            @Param("userId") Long userId,
+            @Param("excludeUserIds") List<Long> excludeUserIds,
             @Param("category") String category,
             @Param("district") String district,
             @Param("latitude") BigDecimal latitude,
@@ -165,6 +166,7 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
             CASE WHEN COUNT(*) = 1 THEN MIN(p.passport_id) END AS single_id
         FROM passport p
         WHERE p.user_id = :targetUserId
+          AND p.status = 'ACTIVE'
           AND ST_Within(
               p.location,
               ST_MakeEnvelope(CAST(:minLng AS float), CAST(:minLat AS float),
@@ -216,6 +218,7 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
         LEFT JOIN FETCH p.images
         WHERE p.user.id = :userId
           AND p.visibility IN :visibilities
+          AND p.status = com.kauniv.lightrip.global.enums.PassportStatus.ACTIVE
           AND p.latitude BETWEEN :minLat AND :maxLat
           AND p.longitude BETWEEN :minLng AND :maxLng
           AND (:cursor IS NULL OR p.id < :cursor)
@@ -258,6 +261,7 @@ public interface PassportRepository extends JpaRepository<Passport, Long> {
         LEFT JOIN FETCH p.images
         WHERE p.user.id = :userId
           AND p.visibility = com.kauniv.lightrip.global.enums.Visibility.PUBLIC
+          AND p.status = com.kauniv.lightrip.global.enums.PassportStatus.ACTIVE
           AND (:district IS NULL OR p.districtCategory = :district)
         ORDER BY p.visitedAt DESC, p.id DESC
         """)

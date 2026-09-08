@@ -1,5 +1,6 @@
 package com.kauniv.lightrip.domain.passport.service;
 
+import com.kauniv.lightrip.domain.block.repository.UserBlockRepository;
 import com.kauniv.lightrip.domain.friend.repository.FriendRepository;
 import com.kauniv.lightrip.domain.passport.dto.request.PassportCreateRequest;
 import com.kauniv.lightrip.domain.passport.dto.request.PassportUpdateRequest;
@@ -10,6 +11,7 @@ import com.kauniv.lightrip.domain.passport.entity.Passport;
 import com.kauniv.lightrip.domain.passport.entity.PassportImage;
 import com.kauniv.lightrip.domain.passport.repository.DistrictCoverRepository;
 import com.kauniv.lightrip.domain.passport.repository.PassportRepository;
+import com.kauniv.lightrip.domain.report.repository.PassportReportRepository;
 import com.kauniv.lightrip.domain.scrap.repository.ScrapRepository;
 import com.kauniv.lightrip.domain.team.entity.Team;
 import com.kauniv.lightrip.domain.team.repository.TeamMemberRepository;
@@ -59,6 +61,10 @@ public class PassportService {
     private final FriendRepository friendRepository;
     private final DistrictCoverRepository districtCoverRepository;
     private final LikeRepository likeRepository;
+    private final UserBlockRepository userBlockRepository;
+    // > 피드/단건/타인 지도 조회에서 차단 관계(양방향)를 제외하기 위해 주입.
+    private final PassportReportRepository passportReportRepository;
+    // > 여권 하드 삭제 시 신고 이력 선삭제용 (like/scrap과 동일 패턴).
     private final AiService aiService;
     // > 여권 저장 후 content 임베딩을 비동기로 저장하기 위해 주입.
 
@@ -167,6 +173,7 @@ public class PassportService {
         Team team = passport.getTeam();
         likeRepository.deleteAllByPassportId(passportId);
         scrapRepository.deleteAllByPassportId(passportId);
+        passportReportRepository.deleteAllByPassportId(passportId);
         passportRepository.delete(passport);
         passportRepository.flush();
         if (team != null) {
@@ -259,7 +266,16 @@ public class PassportService {
     private void validateReadPermission(Passport passport, Long userId) {
         if (passport.isOwnedBy(userId)) return;
         if (passport.isTeamPassport()) {
+            // > 팀은 초대 기반 신뢰 관계 — 팀원이면 status/차단 무시하고 열람 허용 (기존 동작 유지).
             if (teamMemberRepository.existsByTeam_IdAndUser_Id(passport.getTeam().getId(), userId)) return;
+        }
+        // > 신고 누적으로 숨김된 글은 작성자 외에는 존재하지 않는 것으로 취급.
+        if (!passport.isActive()) {
+            throw new BusinessException(ErrorCode.PASSPORT_NOT_FOUND);
+        }
+        // > 차단 관계(양방향)면 글이 존재하지 않는 것으로 취급.
+        if (userBlockRepository.existsBlockBetween(userId, passport.getUser().getId())) {
+            throw new BusinessException(ErrorCode.PASSPORT_NOT_FOUND);
         }
         switch (passport.getVisibility()) {
             case PUBLIC -> {}
@@ -358,8 +374,13 @@ public class PassportService {
 
         validateLocation(latitude, longitude);
 
+        // > 피드에서 제외할 작성자 = 나 + (내가 차단 ∪ 나를 차단).
+        // > 항상 최소 1개(내 id)라 네이티브 NOT IN (:excludeUserIds)이 빈 목록으로 깨지지 않음.
+        List<Long> excludeUserIds = new java.util.ArrayList<>(userBlockRepository.findRelatedUserIds(userId));
+        excludeUserIds.add(userId);
+
         List<Object[]> rows = passportRepository.findFeedPassportIds(
-                userId, category != null ? category.name() : null,
+                excludeUserIds, category != null ? category.name() : null,
                 district != null ? district.name() : null,
                 latitude, longitude, radius, seed, cursor, cursorScore, size + 1
         );
@@ -461,6 +482,10 @@ public class PassportService {
             return getMyLights(viewerId, minLat, maxLat, minLng, maxLng, null);
         }
         if (!userRepository.existsById(targetUserId)) throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        // > 차단 관계면 대상이 존재하지 않는 것으로 취급.
+        if (userBlockRepository.existsBlockBetween(viewerId, targetUserId)) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
+        }
         boolean isFriend = friendRepository.isFriend(viewerId, targetUserId);
         List<Visibility> allowed = isFriend
                 ? List.of(Visibility.PUBLIC, Visibility.FRIENDS_ONLY)
